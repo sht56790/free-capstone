@@ -3,12 +3,14 @@
     {
       "name": "주민등록번호",
       "regex": "\\d{6}[-]?\\d{7}",
-      "action": "mask"
+      "action": "mask",
+      "replacement": "개인정보"
     },
     {
       "name": "전화번호",
       "regex": "010[-]?\\d{4}[-]?\\d{4}",
-      "action": "mask"
+      "action": "mask",
+      "replacement": "개인정보"
     }
   ]
 }
