@@ -28,6 +28,11 @@ def load_sensitive_patterns(file_path='patterns.json'):
 
 SENSITIVE_PATTERNS = load_sensitive_patterns()
 
+# === [수정된 부분] ===
+# LLM에게 지시를 내리는 시스템 프롬프트 정의
+SYSTEM_PROMPT = "너는 프록시 서버의 인공지능이야. 사용자가 요청한 질문에만 간결하고 직접적으로 답변해. 사적인 대화나 보안 관련 조언, 인사말은 절대 하지 마."
+# ======================
+
 @app.route('/chat', methods=['POST'])
 def chat():
     data = request.get_json()
@@ -44,25 +49,26 @@ def chat():
         regex_pattern = re.compile(pattern_info['regex'])
         action = pattern_info['action']
 
-        # 패턴이 있는지 확인
         if re.search(regex_pattern, user_prompt):
             if action == 'mask':
-                # 마스킹 액션
                 processed_prompt = re.sub(regex_pattern, "[MASKED_DATA]", processed_prompt)
             elif action == 'block':
-                # 차단 액션
                 is_blocked = True
-                break # 차단할 경우 더 이상 검사하지 않음
+                break
 
-    # 2. 만약 차단해야 할 경우, LLM 호출을 건너뛰고 바로 반환
     if is_blocked:
         return jsonify({"response": "민감 정보가 포함되어 요청을 처리할 수 없습니다."}), 200
 
-    # 3. Gemini API에 처리된 프롬프트 전달 및 응답 생성
+    # === [수정된 부분] ===
+    # 2. 시스템 프롬프트와 사용자 입력을 결합
+    final_prompt = f"{SYSTEM_PROMPT}\n\n사용자: {processed_prompt}"
+
+    # 3. Gemini API에 결합된 프롬프트 전달 및 응답 생성
     try:
-        response = model.generate_content(processed_prompt)
+        response = model.generate_content(final_prompt)
         response_text = response.text
         return jsonify({"response": response_text})
+    # ======================
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
