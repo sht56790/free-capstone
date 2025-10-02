@@ -1,0 +1,529 @@
+[
+  {
+    "timestamp": 1759356628.2987726,
+    "user": "temp_user@company.com",
+    "user_prompt": "안녕",
+    "action": "mask",
+    "pii": [],
+    "processed_prompt_for_llm": "안녕",
+    "llm_response": "안녕하세요! 무엇을 도와드릴까요?",
+    "detections_in": [],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759356800.351123,
+    "user": "temp_user@company.com",
+    "user_prompt": "안녕",
+    "action": "mask",
+    "pii": [],
+    "processed_prompt_for_llm": "안녕",
+    "llm_response": "안녕하세요! 무엇을 도와드릴까요?",
+    "detections_in": [],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759356822.489553,
+    "user": "temp_user@company.com",
+    "user_prompt": "안ㅇ녕",
+    "action": "mask",
+    "pii": [
+      "NAME"
+    ],
+    "processed_prompt_for_llm": "[NAME]",
+    "llm_response": "That is a placeholder for a person's name, used to protect personally identifiable information.\n\nI cannot access the original name it represents. How can I help you with it?",
+    "detections_in": [
+      {
+        "name": "NAME",
+        "value": "안ㅇ녕",
+        "action": "mask"
+      }
+    ],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759356869.4976928,
+    "user": "temp_user@company.com",
+    "user_prompt": "안녕",
+    "action": "mask",
+    "pii": [],
+    "processed_prompt_for_llm": "안녕",
+    "llm_response": "안녕하세요! 무엇을 도와드릴까요?",
+    "detections_in": [],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759356882.6627982,
+    "user": "temp_user@company.com",
+    "user_prompt": "안녕",
+    "action": "mask",
+    "pii": [],
+    "processed_prompt_for_llm": "안녕",
+    "llm_response": "안녕하세요! 무엇을 도와드릴까요?",
+    "detections_in": [],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759356915.2804544,
+    "user": "temp_user@company.com",
+    "user_prompt": "안녕",
+    "action": "mask",
+    "pii": [],
+    "processed_prompt_for_llm": "안녕",
+    "llm_response": "안녕하세요! 무엇을 도와드릴까요?",
+    "detections_in": [],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759357015.7961433,
+    "user": "temp_user@company.com",
+    "user_prompt": "안녕",
+    "action": "mask",
+    "pii": [],
+    "processed_prompt_for_llm": "안녕",
+    "llm_response": "안녕하세요! 무엇을 도와드릴까요?",
+    "detections_in": [],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759357165.7253845,
+    "user": "temp_user@company.com",
+    "user_prompt": "안녕",
+    "action": "mask",
+    "pii": [],
+    "processed_prompt_for_llm": "안녕",
+    "llm_response": "안녕하세요! 무엇을 도와드릴까요?",
+    "detections_in": [],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759357454.9905336,
+    "user": "temp_user@company.com",
+    "user_prompt": "제 번호 010-1234-5678로 결과 보내주세요.",
+    "action": "mask",
+    "pii": [
+      "전화번호",
+      "PHONE"
+    ],
+    "processed_prompt_for_llm": "[PHONE] 개인정보로 결과 보내주세요.",
+    "llm_response": "죄송하지만, 저는 사용자의 개인정보 보호를 위해 전화번호와 같은 개인정보를 수집하거나 사용할 수 없습니다. 또한, 문자 메시지나 다른 외부 수단을 통해 직접 정보를 보내드리는 기능도 가지고 있지 않습니다.\n\n제가 생성한 답변이나 결과는 이 채팅창에서 바로 확인하시거나, 필요하시면 직접 복사하여 사용하실 수 있습니다.\n\n어떤 결과를 보내드리길 원하시나요? 여기에 바로 알려드릴 수 있도록 도와드리겠습니다.",
+    "detections_in": [
+      {
+        "name": "전화번호",
+        "value": "010-1234-5678",
+        "action": "mask"
+      },
+      {
+        "name": "PHONE",
+        "value": "제 번호",
+        "action": "mask"
+      }
+    ],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759357479.5628247,
+    "user": "temp_user@company.com",
+    "user_prompt": "견적서는 security-team@company.co.kr로 부탁드립니다",
+    "action": "block",
+    "pii": [
+      "모델 판정 차단: EMAIL"
+    ],
+    "processed_prompt_for_llm": "BLOCKED_BY_AI",
+    "llm_response": "N/A",
+    "detections_in": [
+      {
+        "name": "이메일",
+        "value": "security-team@company.co.kr",
+        "action": "mask"
+      },
+      {
+        "name": "모델 판정 차단: EMAIL",
+        "value": "N/A",
+        "action": "block"
+      }
+    ],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759357528.1285172,
+    "user": "temp_user@company.com",
+    "user_prompt": "본인 인증용으로 900101-1234567을 남깁니다.",
+    "action": "block",
+    "pii": [
+      "모델 판정 차단: ETC"
+    ],
+    "processed_prompt_for_llm": "BLOCKED_BY_AI",
+    "llm_response": "N/A",
+    "detections_in": [
+      {
+        "name": "계좌번호",
+        "value": "900101",
+        "action": "mask"
+      },
+      {
+        "name": "모델 판정 차단: ETC",
+        "value": "N/A",
+        "action": "block"
+      }
+    ],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759358624.7656863,
+    "user": "temp_user@company.com",
+    "user_prompt": "서류는 서울특별시 성북구 삼양로 12길 34, 502호 로.",
+    "action": "block",
+    "pii": [
+      "모델 판정 차단: ADDRESS"
+    ],
+    "processed_prompt_for_llm": "BLOCKED_BY_AI",
+    "llm_response": "N/A",
+    "detections_in": [
+      {
+        "name": "주소",
+        "value": "성북구 삼양로",
+        "action": "mask"
+      },
+      {
+        "name": "모델 판정 차단: ADDRESS",
+        "value": "N/A",
+        "action": "block"
+      }
+    ],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759358644.675374,
+    "user": "temp_user@company.com",
+    "user_prompt": "입금은 국민은행 123-456-789012 로 부탁",
+    "action": "block",
+    "pii": [
+      "모델 판정 차단: ETC"
+    ],
+    "processed_prompt_for_llm": "BLOCKED_BY_AI",
+    "llm_response": "N/A",
+    "detections_in": [
+      {
+        "name": "계좌번호",
+        "value": "123-456-789012",
+        "action": "mask"
+      },
+      {
+        "name": "모델 판정 차단: ETC",
+        "value": "N/A",
+        "action": "block"
+      }
+    ],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759358677.8844256,
+    "user": "temp_user@company.com",
+    "user_prompt": "“본인 인증용으로 900101-1234567 남깁니다.",
+    "action": "mask",
+    "pii": [
+      "주민등록번호"
+    ],
+    "processed_prompt_for_llm": "“본인 인증용으로 개인정보 남깁니다.",
+    "llm_response": "알겠습니다. 다만, 보안 및 개인정보 보호를 위해 이름, 주소, 연락처, 카드 번호 등 민감한 정보는 절대 공유하지 말아주세요. 저는 AI 모델로서 개인정보를 저장하거나 처리할 수 없습니다.\n\n다른 도움이 필요하시면 말씀해 주세요.",
+    "detections_in": [
+      {
+        "name": "주민등록번호",
+        "value": "900101-1234567",
+        "action": "mask"
+      }
+    ],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759358719.840197,
+    "user": "temp_user@company.com",
+    "user_prompt": "견적서는 security-team@company.co.kr\n 로 주세요.",
+    "action": "block",
+    "pii": [
+      "모델 판정 차단: EMAIL"
+    ],
+    "processed_prompt_for_llm": "BLOCKED_BY_AI",
+    "llm_response": "N/A",
+    "detections_in": [
+      {
+        "name": "이메일",
+        "value": "security-team@company.co.kr",
+        "action": "mask"
+      },
+      {
+        "name": "모델 판정 차단: EMAIL",
+        "value": "N/A",
+        "action": "block"
+      }
+    ],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759359124.7539876,
+    "user": "temp_user@company.com",
+    "user_prompt": "견적서는 security-team@company.co.kr\n로 주세요.",
+    "action": "block",
+    "pii": [
+      "모델 판정 차단: EMAIL"
+    ],
+    "processed_prompt_for_llm": "BLOCKED_BY_AI",
+    "llm_response": "N/A",
+    "detections_in": [
+      {
+        "name": "이메일",
+        "value": "security-team@company.co.kr",
+        "action": "mask"
+      },
+      {
+        "name": "모델 판정 차단: EMAIL",
+        "value": "N/A",
+        "action": "block"
+      }
+    ],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759359299.385205,
+    "user": "temp_user@company.com",
+    "user_prompt": "견적서는 security-team@company.co.kr\n로 주세요.",
+    "action": "mask",
+    "pii": [
+      "이메일",
+      "EMAIL"
+    ],
+    "processed_prompt_for_llm": "견적서는 [EMAIL]\n로 주세요.",
+    "llm_response": "네, 알겠습니다. 견적서를 [EMAIL] 주소로 보내드리겠습니다.\n\n다른 필요하신 사항이 있으시면 말씀해 주세요.",
+    "detections_in": [
+      {
+        "name": "이메일",
+        "value": "security-team@company.co.kr",
+        "action": "mask"
+      },
+      {
+        "name": "EMAIL",
+        "value": "[EMAIL]",
+        "action": "mask"
+      }
+    ],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759359719.5049415,
+    "user": "temp_user@company.com",
+    "user_prompt": "견적서는 security-team@company.co.kr\n로 주세요.",
+    "action": "block",
+    "pii": [
+      "모델 판정 차단: EMAIL"
+    ],
+    "processed_prompt_for_llm": "BLOCKED_BY_AI",
+    "llm_response": "N/A",
+    "detections_in": [
+      {
+        "name": "이메일",
+        "value": "security-team@company.co.kr",
+        "action": "mask"
+      },
+      {
+        "name": "모델 판정 차단: EMAIL",
+        "value": "N/A",
+        "action": "block"
+      }
+    ],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759359748.201518,
+    "user": "temp_user@company.com",
+    "user_prompt": "견적서는 security-team@company.co.kr\n로 주세요.",
+    "action": "mask",
+    "pii": [
+      "이메일",
+      "EMAIL"
+    ],
+    "processed_prompt_for_llm": "견적서는 [EMAIL]\n로 주세요.",
+    "llm_response": "네, 알겠습니다. 견적서를 [EMAIL] 주소로 보내드리겠습니다.",
+    "detections_in": [
+      {
+        "name": "이메일",
+        "value": "security-team@company.co.kr",
+        "action": "mask"
+      },
+      {
+        "name": "EMAIL",
+        "value": "[EMAIL]",
+        "action": "mask"
+      }
+    ],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759359856.8222787,
+    "user": "temp_user@company.com",
+    "user_prompt": "안녕하세요",
+    "action": "mask",
+    "pii": [],
+    "processed_prompt_for_llm": "안녕하세요",
+    "llm_response": "안녕하세요! 무엇을 도와드릴까요?",
+    "detections_in": [],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759359960.783026,
+    "user": "temp_user@company.com",
+    "user_prompt": "사내 메신저에 슬랙이랑 팀즈 중 뭐가 협업에 더 나을까요? 보안 기준도 알려주세요",
+    "action": "mask",
+    "pii": [],
+    "processed_prompt_for_llm": "사내 메신저에 슬랙이랑 팀즈 중 뭐가 협업에 더 나을까요? 보안 기준도 알려주세요",
+    "llm_response": "안녕하세요! 슬랙(Slack)과 마이크로소프트 팀즈(Microsoft Teams)는 현재 가장 대표적인 사내 협업 메신저입니다. 둘 다 훌륭한 툴이지만, 각기 다른 강점과 특징을 가지고 있어 조직의 특성과 필요에 따라 선택이 달라질 수 있습니다.\n\n두 툴을 협업과 보안 기준으로 나누어 자세히 비교해 드리겠습니다.\n\n### 한눈에 보는 슬랙 vs 팀즈\n\n| 구분 항목 | 슬랙 (Slack) | 마이크로소프트 팀즈 (Microsoft Teams) |\n| :--- | :--- | :--- |\n| **핵심 강점** | 직관적인 UI/UX, 강력한 앱 연동, 개발자 친화적 | MS 365(Office) 생태계와의 완벽한 통합, 강력한 화상회의 |\n| **사용자 경험** | 가볍고 빠르며, 캐주얼하고 유연한 소통에 유리 | 기능이 많아 다소 무겁지만, 체계적이고 구조화된 협업에 유리 |\n| **앱 연동** | 2,400개 이상의 압도적인 서드파티 앱 연동 지원 | MS 365 앱과의 연동이 핵심, 서드파티 앱도 지원 |\n| **화상 회의** | '허들' 기능으로 빠른 음성/영상 소통 가능 (기본 기능) | 본격적인 화상회의 솔루션 (대규모 회의, 녹화, 자막 등) |\n| **파일 관리** | 채널 내 파일 공유, 검색 기능 우수 (단, 용량 제한) | SharePoint/OneDrive 기반으로 대용량 파일 관리 및 공동 편집 용이 |\n| **가격** | 사용자당 과금, 무료 버전은 기능 제한(메시지 90일 보관) | MS 365 비즈니스 플랜에 포함되어 추가 비용 없는 경우가 많음 |\n| **추천 대상** | IT/스타트업, 개발 조직, 수평적이고 빠른 소통을 중시하는 팀 | 대기업, 공공기관, MS Office를 이미 사용 중인 모든 조직 |\n\n---\n\n### 상세 비교\n\n#### 1. 협업 및 사용자 경험 (UX)\n\n*   **슬랙 (Slack)**\n    *   **직관성:** 처음 사용하는 사람도 쉽게 적응할 수 있을 만큼 매우 직관적이고 사용자 친화적입니다.\n    *   **채널 중심:** 주제별로 '채널'을 만들어 대화하며, 스레드 기능을 통해 특정 주제에 대한 논의를 깔끔하게 정리할 수 있습니다.\n    *   **빠른 소통:** '허들' 기능은 클릭 한 번으로 팀원들과 즉각적인 음성/영상 대화를 시작할 수 있어 원격 근무 환경에서 특히 유용합니다.\n    *   **문화:** 전반적으로 캐주얼하고 유연한 소통 문화를 만드는 데 기여합니다.\n\n*   **팀즈 (Microsoft Teams)**\n    *   **MS 365 통합:** 가장 큰 강점입니다. 팀즈 내에서 워드, 엑셀, 파워포인트 파일을 바로 열고 여러 명이 동시에 편집할 수 있습니다. 모든 파일은 SharePoint와 OneDrive에 자동으로 저장 및 동기화됩니다.\n    *   **구조화:** '팀 > 채널'의 구조로 되어 있어 부서나 프로젝트 단위의 체계적인 관리에 더 적합합니다.\n    *   **기능 통합:** 채팅, 화상회의, 파일 저장소, 플래너(업무 관리) 등 협업에 필요한 모든 기능이 하나로 통합되어 있습니다.\n\n#### 2. 보안 기준\n\n두 플랫폼 모두 엔터프라이즈급 보안을 제공하지만, 접근 방식과 강점에 차이가 있습니다.\n\n*   **슬랙 (Slack) 보안 특징**\n    *   **데이터 보호:** 전송 중인 데이터와 저장된 데이터 모두 암호화됩니다.\n    *   **인증:** 2단계 인증(2FA), SSO(통합 인증)를 지원하여 안전한 로그인을 보장합니다.\n    *   **거버넌스:** 유료 플랜(Enterprise Grid)에서는 EKM(Enterprise Key Management)을 통해 조직이 직접 암호화 키를 관리할 수 있고, 데이터 손실 방지(DLP) 연동을 지원합니다.\n    *   **보안 인증:** SOC 2, SOC 3, ISO/IEC 27001, FedRAMP 등 주요 국제 보안 인증을 획득하여 신뢰성을 확보했습니다.\n    *   **외부 협업:** '슬랙 커넥트'를 통해 외부 파트너사와도 안전하게 채널을 공유하고 협업할 수 있습니다.\n\n*   **마이크로소프트 팀즈 (Microsoft Teams) 보안 특징**\n    *   **통합 보안 생태계:** Microsoft 365의 강력한 보안 프레임워크 위에서 작동합니다. Azure Active Directory(AAD)를 통한 신원 및 접근 관리가 기본입니다.\n    *   **고급 위협 방지:** Microsoft Defender for Office 365와 연동하여 악성 링크나 파일로부터 사용자를 보호합니다.\n    *   **정보 거버넌스:** Microsoft Purview를 통해 민감 정보를 자동으로 탐지하고 보호하는 데이터 손실 방지(DLP), 보존 정책, eDiscovery(법적 정보 공개) 등 엔터프라이즈급 컴플라이언스 기능을 기본으로 제공합니다.\n    *   **세분화된 접근 제어:** '조건부 액세스' 정책을 통해 사용자, 위치, 기기 상태 등에 따라 접근 권한을 동적으로 제어할 수 있습니다.\n    *   **보안 인증:** 슬랙이 가진 대부분의 인증은 물론, 정부나 금융권 등 특정 산업군이 요구하는 더 광범위하고 엄격한 컴플라이언스 기준을 충족합니다.\n\n### 최종 선택을 위한 가이드\n\n**👍 이런 경우 슬랙(Slack)을 추천합니다.**\n\n*   조직이 주로 개발자나 IT 인력으로 구성되어 있고, Jira, GitHub 등 개발 도구와의 연동이 매우 중요한 경우\n*   수평적이고 빠른 커뮤니케이션 문화를 지향하는 스타트업이나 중소기업\n*   최고 수준의 사용자 경험과 직관적인 인터페이스를 가장 중요하게 생각하는 경우\n*   이미 MS 365 생태계에 묶여 있지 않고, 최고의 툴들을 조합해서 사용하길 원하는 경우\n\n**👍 이런 경우 팀즈(Microsoft Teams)를 추천합니다.**\n\n*   **이미 Microsoft 365 (Office 365)를 구독하고 있는 모든 조직 (가성비 최고)**\n*   문서 공동 작업(Word, Excel 등)이 협업의 핵심인 경우\n*   대규모 조직으로, 체계적인 팀 관리와 강력한 보안 및 컴플라이언스 정책이 필수적인 경우\n*   별도의 솔루션 없이도 강력한 화상회의 기능을 기본으로 사용하고 싶은 경우\n\n**결론적으로,** 두 툴 사이의 선택은 **\"현재 우리 조직이 어떤 도구 생태계에 속해 있는가?\"** 와 **\"어떤 협업 문화를 지향하는가?\"** 에 따라 결정되는 경우가 많습니다. 가능하다면 소규모 팀 단위로 두 툴을 모두 파일럿 테스트 해보고, 조직의 피드백을 바탕으로 최종 결정하는 것을 추천합니다.",
+    "detections_in": [],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759360001.8889363,
+    "user": "temp_user@company.com",
+    "user_prompt": "제 번호 010-1234-5678로 결과 보내주세요.",
+    "action": "mask",
+    "pii": [
+      "전화번호",
+      "PHONE"
+    ],
+    "processed_prompt_for_llm": "[PHONE] 개인정보로 결과 보내주세요.",
+    "llm_response": "죄송하지만, 저는 AI 챗봇으로 문자 메시지를 보내거나 외부로 정보를 전송할 수 있는 기능이 없습니다.\n\n또한, 보안 및 개인정보 보호를 위해 **[PHONE]** 과 같은 개인정보를 수집하거나 사용할 수 없도록 설계되었습니다.\n\n필요하시다면 제가 드린 답변을 직접 복사하여 사용하시는 것을 권장합니다. 다른 도움이 필요하시면 언제든지 말씀해 주세요.",
+    "detections_in": [
+      {
+        "name": "전화번호",
+        "value": "010-1234-5678",
+        "action": "mask"
+      },
+      {
+        "name": "PHONE",
+        "value": "제 번호",
+        "action": "mask"
+      }
+    ],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759360056.5583053,
+    "user": "temp_user@company.com",
+    "user_prompt": "아, 내 키가 여기에 있었네 sk-TEST1234abcd... 이거 그대로 써도 돼?",
+    "action": "block",
+    "pii": [
+      "모델 판정 차단: ETC"
+    ],
+    "processed_prompt_for_llm": "BLOCKED_BY_AI",
+    "llm_response": "N/A",
+    "detections_in": [
+      {
+        "name": "모델 판정 차단: ETC",
+        "value": "N/A",
+        "action": "block"
+      }
+    ],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759360074.4325833,
+    "user": "temp_user@company.com",
+    "user_prompt": "견적서는 security-team@company.co.kr로 부탁드립니다.",
+    "action": "block",
+    "pii": [
+      "모델 판정 차단: EMAIL"
+    ],
+    "processed_prompt_for_llm": "BLOCKED_BY_AI",
+    "llm_response": "N/A",
+    "detections_in": [
+      {
+        "name": "이메일",
+        "value": "security-team@company.co.kr",
+        "action": "mask"
+      },
+      {
+        "name": "모델 판정 차단: EMAIL",
+        "value": "N/A",
+        "action": "block"
+      }
+    ],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759360256.394189,
+    "user": "temp_user@company.com",
+    "user_prompt": "사내 메신저에 슬랙이랑 팀즈 중 뭐가 협업에 더 나을까요? 보안 기준도 알려주세요",
+    "action": "mask",
+    "pii": [],
+    "processed_prompt_for_llm": "사내 메신저에 슬랙이랑 팀즈 중 뭐가 협업에 더 나을까요? 보안 기준도 알려주세요",
+    "llm_response": "안녕하세요! 사내 메신저로 슬랙(Slack)과 팀즈(Microsoft Teams) 중 어떤 툴이 협업에 더 나을지 고민이시군요. 두 툴 모두 훌륭하지만, 기업의 특성과 업무 방식에 따라 장단점이 명확히 갈립니다.\n\n핵심적인 비교와 보안 기준을 정리해 드리겠습니다.\n\n### 한눈에 보는 슬랙 vs 팀즈\n\n| 구분 | **슬랙 (Slack)** | **마이크로소프트 팀즈 (Microsoft Teams)** |\n| :--- | :--- | :--- |\n| **핵심 컨셉** | **커뮤니케이션 허브 (Communication Hub)** | **올인원 협업 플랫폼 (All-in-One Platform)** |\n| **강점** | • 직관적이고 쉬운 UI/UX<br>• 압도적인 외부 앱 연동성 (Best-of-breed)<br>• 강력한 검색 기능<br>• 개발자 친화적인 문화와 기능 | • MS 365(Office) 생태계와의 완벽한 통합<br>• 강력한 화상 회의 및 통화 기능<br>• 파일 공동 편집 및 관리 (SharePoint/OneDrive 기반)<br>• 하나의 플랫폼에서 대부분의 업무 해결 |\n| **약점** | • 화상 회의 기능이 상대적으로 약함<br>• 파일 관리 구조가 단순함<br>• 모든 기능을 활용하려면 유료 플랜 필수 | • UI가 다소 복잡하게 느껴질 수 있음<br>• 외부 앱 연동이 슬랙만큼 유연하지 않음<br>• 검색 기능이 슬랙보다 직관성이 떨어질 때가 있음 |\n| **추천 기업** | • 스타트업, IT/개발 중심 조직<br>• 수평적이고 빠른 커뮤니케이션을 중시하는 기업<br>• 다양한 SaaS(Jira, Google Drive 등)를 연동해 쓰는 기업 | • MS 365(Office)를 이미 도입한 기업<br>• 대기업, 공공/금융 등 전통적인 조직<br>• 문서 중심의 협업과 대규모 화상 회의가 잦은 기업 |\n\n---\n\n### 상세 비교\n\n#### 1. 사용자 경험 (UI/UX) 및 커뮤니케이션\n*   **슬랙**: 매우 직관적이고 깔끔합니다. 채널, 스레드, 이모티콘 반응 등 대화에 집중된 기능들이 유기적으로 연결되어 있어 신속하고 유연한 소통에 유리합니다. '커뮤니케이션의 재미'를 느낄 수 있습니다.\n*   **팀즈**: 채팅, 팀, 캘린더, 파일 등 기능별 탭 구분이 명확합니다. MS Office 제품과 유사한 인터페이스를 가져 기존 MS 사용자에게는 익숙하지만, 처음 접하는 사람에게는 다소 복잡하고 무겁게 느껴질 수 있습니다.\n\n#### 2. 파일 공유 및 문서 협업\n*   **슬랙**: 파일 공유는 간편하지만, 체계적인 관리는 어렵습니다. 대화에 파일을 첨부하는 방식에 가깝습니다.\n*   **팀즈**: **압도적인 강점**을 보입니다. 모든 파일은 SharePoint나 OneDrive에 저장되며, 팀즈 내에서 워드, 엑셀, 파워포인트 문서를 열어 여러 명이 **동시에 실시간으로 공동 편집**할 수 있습니다. 버전 관리도 용이합니다.\n\n#### 3. 화상 회의 및 통화\n*   **슬랙**: '허들'이라는 음성/영상 채팅 기능이 있지만, 간단한 논의에 적합합니다. 대규모 회의나 웨비나 등 전문적인 기능은 부족합니다.\n*   **팀즈**: **최고 수준의 화상 회의 기능**을 제공합니다. 안정적인 대규모 회의, 배경 흐리기/바꾸기, 녹화, 자막 등 비즈니스 미팅에 필요한 거의 모든 기능을 갖추고 있습니다.\n\n#### 4. 앱 연동 및 확장성\n*   **슬랙**: 2,400개 이상의 앱과 연동을 지원하며, 'Best-of-breed(각 분야 최고의 서비스를 연결)' 철학을 가지고 있습니다. Jira, Trello, Google Calendar 등 다양한 업무 툴을 슬랙 중심으로 통합하여 워크플로우를 자동화하기에 매우 유리합니다.\n*   **팀즈**: MS 365 앱(Planner, To Do, Power BI 등)과는 완벽하게 통합됩니다. 외부 앱 연동도 지원하지만 슬랙만큼 다양하거나 깊이 있지는 않습니다. MS 생태계 안에서 모든 것을 해결하는 데 초점이 맞춰져 있습니다.\n\n---\n\n### 보안 기준 비교\n\n두 플랫폼 모두 엔터프라이즈급 보안을 제공하지만, 접근 방식에 차이가 있습니다.\n\n#### 공통 보안 기능\n*   **전송 중 및 저장 데이터 암호화**: 모든 데이터는 전송 중(TLS 1.2) 및 저장 시(AES-256) 암호화됩니다.\n*   **2단계 인증(2FA/MFA)**: 모든 사용자가 계정 보안을 강화할 수 있습니다.\n*   **ID 및 접근 관리**: SAML 기반 SSO(Single Sign-On)를 지원하여 중앙에서 사용자 접근을 관리할 수 있습니다.\n\n#### 슬랙 (Slack)의 보안 특징\n*   **Slack Enterprise Key Management (EKM)**: 기업이 직접 암호화 키를 관리할 수 있는 최고 수준의 보안 옵션을 제공합니다. 민감 정보를 다루는 금융, 헬스케어 분야에서 선호하는 기능입니다. (엔터프라이즈 플랜)\n*   **데이터 손실 방지 (DLP)**: 외부 DLP 솔루션과 연동하여 민감 정보 유출을 감시하고 차단할 수 있습니다.\n*   **데이터 보존 정책**: 메시지와 파일을 얼마나 보관할지 맞춤형으로 설정하여 기업의 규정 준수 요건을 충족할 수 있습니다.\n*   **주요 인증**: SOC 2, SOC 3, ISO/IEC 27001, HIPAA, FedRAMP 등 주요 글로벌 보안 인증을 획득했습니다.\n\n#### 마이크로소프트 팀즈 (Microsoft Teams)의 보안 특징\n*   **Microsoft 365 보안 및 규정 준수 센터 통합**: 팀즈의 보안은 **MS 365의 통합 보안 프레임워크**에 깊숙이 통합되어 있다는 것이 가장 큰 장점입니다.\n*   **Azure Active Directory (AD)**: 조건부 액세스, ID 보호 등 강력한 계정 관리 및 접근 제어 기능을 제공합니다.\n*   **Microsoft Information Protection (MIP)**: 민감도 레이블을 사용하여 팀, 사이트, 문서의 기밀 정보를 자동으로 분류하고 보호 및 암호화할 수 있습니다. (예: '대외비' 파일은 외부 공유 금지)\n*   **데이터 손실 방지 (DLP)**: MS 365 DLP 정책을 통해 팀즈 채팅 및 채널에서 신용카드 번호, 주민등록번호 등 민감 정보 공유를 탐지하고 차단할 수 있습니다.\n*   **eDiscovery 및 법적 보존**: 소송 등 법적 요구 발생 시 관련 데이터를 검색, 보존, 내보낼 수 있는 강력한 기능을 제공합니다.\n\n### 결론: 어떤 툴을 선택해야 할까요?\n\n*   **슬랙을 추천하는 경우:**\n    *   **\"우리 회사는 이미 MS 365를 쓰지 않고, Google Workspace, Jira, Asana 등 다양한 툴을 조합해서 사용하고 있다.\"**\n    *   **\"개발자들이 많고, 빠르고 수평적인 소통 문화가 중요하다.\"**\n    *   **\"업무 자동화와 외부 서비스 연동이 협업의 핵심이다.\"**\n\n*   **팀즈를 추천하는 경우:**\n    *   **\"우리 회사는 이미 Microsoft 365 Business/Enterprise 플랜을 구독하고 있다.\" (추가 비용 없이 사용 가능)**\n    *   **\"문서 공동 편집, 대규모 화상 회의가 업무의 대부분을 차지한다.\"**\n    *   **\"보안 및 규정 준수를 위해 모든 데이터를 MS의 단일 플랫폼에서 중앙 관리하고 싶다.\"**\n\n**보안 측면 요약**: 두 툴 모두 신뢰할 수 있는 보안을 제공합니다. 다만, **슬랙**은 자체적으로 강력한 보안 기능을 제공하고 **팀즈**는 Microsoft 365라는 거대한 통합 보안 생태계의 일부로 작동한다는 차이가 있습니다. 이미 MS 보안 솔루션을 사용 중이라면 팀즈의 보안 관리가 훨씬 효율적일 것입니다.",
+    "detections_in": [],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759360287.1627412,
+    "user": "temp_user@company.com",
+    "user_prompt": "제 번호 010-1234-5678로 결과 보내주세요.",
+    "action": "mask",
+    "pii": [
+      "전화번호",
+      "PHONE"
+    ],
+    "processed_prompt_for_llm": "[PHONE] 개인정보로 결과 보내주세요.",
+    "llm_response": "죄송합니다. 저는 개인정보 보호를 위해 전화번호, 이메일 등 외부 연락처로 직접 정보를 전송할 수 있는 기능이 없습니다.\n\n보안 및 개인정보 보호 정책상 제공해주신 `[PHONE]` 번호로 결과를 보내드릴 수 없는 점 양해 부탁드립니다.\n\n이곳의 답변 내용을 직접 **복사하여 원하시는 곳에 붙여넣기** 하시거나, 화면을 **캡처**하여 사용하시는 것을 권장합니다.\n\n다른 궁금한 점이 있으시면 언제든지 다시 질문해주세요.",
+    "detections_in": [
+      {
+        "name": "전화번호",
+        "value": "010-1234-5678",
+        "action": "mask"
+      },
+      {
+        "name": "PHONE",
+        "value": "제 번호",
+        "action": "mask"
+      }
+    ],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759360303.1834497,
+    "user": "temp_user@company.com",
+    "user_prompt": "견적서는 security-team@company.co.kr로 부탁드립니다.",
+    "action": "block",
+    "pii": [
+      "모델 판정 차단: EMAIL"
+    ],
+    "processed_prompt_for_llm": "BLOCKED_BY_AI",
+    "llm_response": "N/A",
+    "detections_in": [
+      {
+        "name": "이메일",
+        "value": "security-team@company.co.kr",
+        "action": "mask"
+      },
+      {
+        "name": "모델 판정 차단: EMAIL",
+        "value": "N/A",
+        "action": "block"
+      }
+    ],
+    "detections_out": []
+  },
+  {
+    "timestamp": 1759360323.0010586,
+    "user": "temp_user@company.com",
+    "user_prompt": "아, 내 키가 여기에 있었네 sk-TEST1234abcd... 이거 그대로 써도 돼?",
+    "action": "block",
+    "pii": [
+      "모델 판정 차단: ETC"
+    ],
+    "processed_prompt_for_llm": "BLOCKED_BY_AI",
+    "llm_response": "N/A",
+    "detections_in": [
+      {
+        "name": "모델 판정 차단: ETC",
+        "value": "N/A",
+        "action": "block"
+      }
+    ],
+    "detections_out": []
+  }
+]

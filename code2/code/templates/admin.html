@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chat Proxy – 관리자 페이지</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* -------------------
+     * 기본 스타일 및 디자인 시스템 (사용자 화면과 동일)
+     * ------------------- */
+    :root {
+      --bg: #f8fafc; --panel: #ffffff; --muted: #f1f5f9; --ring: #e2e8f0;
+      --text: #1e293b; --sub: #64748b;
+      --blue: #2563eb; --blue-2: #60a5fa; --mint: #10b981;
+      --danger: #ef4444; --success: #16a34a; --warn: #f59e0b;
+      --shadow: 0 4px 12px rgba(30, 41, 59, .06);
+      --radius: 12px; --radius-sm: 8px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; color: var(--text); background: var(--bg);
+      font: 500 15px/1.55 "Pretendard", "Inter", "Noto Sans KR", system-ui;
+      -webkit-font-smoothing: antialiased;
+    }
+    .layout { display: grid; grid-template-columns: 260px 1fr; height: 100vh; }
+
+    /* -------------------
+     * 사이드바 (네비게이션)
+     * ------------------- */
+    .sidebar {
+      background: var(--panel); border-right: 1px solid var(--ring);
+      padding: 16px; display: flex; flex-direction: column;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
+    .logo {
+      width: 32px; height: 32px; border-radius: 10px;
+      background: conic-gradient(from 180deg, var(--blue), var(--mint), var(--blue));
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, .12);
+    }
+    .brand h1 { font-size: 18px; margin: 0; }
+    .nav-group-title { font-size: 12px; color: #94a3b8; margin: 20px 8px 8px; }
+    .nav-link {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+      border-radius: var(--radius-sm); text-decoration: none; color: var(--sub);
+      border: 1px solid transparent; transition: all .2s;
+    }
+    .nav-link:hover { background: var(--muted); color: var(--text); }
+    .nav-link.active {
+      background: #eef2ff; color: var(--blue); font-weight: 600;
+      border-color: #c7d2fe;
+    }
+    .sidebar footer {
+      margin-top: auto; font-size: 12px; color: #94a3b8; padding: 16px 0;
+      border-top: 1px solid var(--ring);
+    }
+    .sidebar footer a { color: var(--blue); }
+
+    /* -------------------
+     * 메인 콘텐츠 영역
+     * ------------------- */
+    .main { display: grid; grid-template-rows: auto 1fr; height: 100vh; overflow: hidden; }
+    .topbar {
+      display: flex; align-items: center; padding: 14px 24px;
+      background: var(--panel); border-bottom: 1px solid var(--ring);
+    }
+    .topbar h2 { margin: 0; font-size: 20px; }
+    .content-wrap { overflow-y: auto; padding: 24px; }
+
+    /* 공용 컴포넌트 */
+    .card { background: var(--panel); border-radius: var(--radius); border: 1px solid var(--ring); box-shadow: var(--shadow); padding: 20px; }
+    .btn {
+      padding: 10px 16px; border-radius: var(--radius-sm); border: 1px solid var(--ring);
+      background: var(--panel); color: var(--text); cursor: pointer; font-weight: 600;
+      box-shadow: var(--shadow); transition: all .2s;
+    }
+    .btn:hover { border-color: #94a3b8; }
+    .btn.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+    .btn.primary:hover { background: #1d4ed8; }
+    .btn.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+    
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--ring); font-size: 14px; }
+    th { background: var(--muted); color: var(--sub); font-weight: 600; }
+    tbody tr:hover { background: #fcfdff; }
+    .tag {
+      display: inline-block; padding: 4px 10px; border-radius: 999px;
+      font-size: 12px; font-weight: 600;
+    }
+    .tag.mask { background: #ffedd5; color: #9a3412; }
+    .tag.block { background: #fee2e2; color: #991b1b; }
+    .tag.user { background: #e0e7ff; color: #3730a3; }
+    .tag.admin { background: #dcfce7; color: #15803d; }
+
+    .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+    .input {
+      flex: 1; border: 1px solid var(--ring); background: #fff; padding: 10px 12px;
+      border-radius: var(--radius-sm); outline-color: var(--blue);
+    }
+
+    /* -------------------
+     * 뷰별 스타일
+     * ------------------- */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+    .stat-card { background: var(--panel); border-radius: var(--radius); border: 1px solid var(--ring); padding: 20px; box-shadow: var(--shadow); }
+    .stat-card .label { font-size: 14px; color: var(--sub); margin-bottom: 8px; }
+    .stat-card .value { font-size: 32px; font-weight: 700; }
+    .chart-card { margin-top: 24px; }
+
+    /* 모달 스타일 */
+    .modal-backdrop {
+        position: fixed; inset: 0; background: rgba(30, 41, 59, .6);
+        display: none; place-items: center; backdrop-filter: blur(4px);
+    }
+    .modal-content {
+        background: var(--panel); padding: 24px; border-radius: var(--radius);
+        width: 100%; max-width: 500px; box-shadow: 0 20px 50px rgba(0,0,0,.2);
+    }
+    .modal-content h3 { margin: 0 0 20px; }
+    .form-field { margin-bottom: 16px; }
+    .form-field label { display: block; font-size: 13px; margin-bottom: 6px; }
+    .form-field .input, .form-field select { width: 100%; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand"><div class="logo"></div><h1>Admin</h1></div>
+      <nav>
+        <a href="#" class="nav-link active" data-view="dashboard">📊 대시보드</a>
+        <a href="#" class="nav-link" data-view="logs">🛡️ 감사 로그</a>
+        
+        <div class="nav-group-title">관리</div>
+        <a href="#" class="nav-link" data-view="users">👥 사용자 관리</a>
+        <a href="#" class="nav-link" data-view="rules">⚙️ 탐지 규칙 관리</a>
+        <a href="#" class="nav-link" data-view="status">🌐 시스템 상태</a>
+      </nav>
+      <footer>
+        Chat Proxy Capstone. <br/>
+        <a href="#" id="logoutBtn">로그아웃</a>
+      </footer>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <h2 id="view-title">대시보드</h2>
+      </div>
+
+      <div class="content-wrap">
+        <section id="dashboard-view">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="label">오늘의 요청</div>
+              <div class="value" id="stat-today-requests">1,402</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">탐지된 민감정보 (24h)</div>
+              <div class="value" id="stat-pii-detected">88</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">차단된 요청 (24h)</div>
+              <div class="value" id="stat-blocked">12</div>
+            </div>
+             <div class="stat-card">
+              <div class="label">활성 사용자</div>
+              <div class="value" id="stat-active-users">15</div>
+            </div>
+          </div>
+
+          <div class="chart-card card">
+            <h3>최근 7일 요청/탐지 추이</h3>
+            <canvas id="trends-chart"></canvas>
+          </div>
+          <div class="chart-card card">
+            <h3>탐지 유형 분포</h3>
+            <canvas id="pii-chart"></canvas>
+          </div>
+        </section>
+
+        <section id="logs-view" style="display: none;">
+          <div class="card">
+              <div class="input-group">
+                  <input type="text" id="log-search" class="input" placeholder="사용자 ID 또는 키워드로 검색...">
+                  <input type="date" id="log-date" class="input">
+                  <select id="log-type" class="input">
+                      <option value="">모든 탐지 유형</option>
+                      <option value="PHONE">전화번호</option>
+                      <option value="EMAIL">이메일</option>
+                      <option value="CARD">카드번호</option>
+                  </select>
+              </div>
+              <table>
+                <thead>
+                  <tr><th>시간</th><th>사용자</th><th>탐지 내역</th><th>처리</th><th>요청 내용</th></tr>
+                </thead>
+                <tbody id="log-table-body">
+                  </tbody>
+              </table>
+          </div>
+        </section>
+
+        <section id="users-view" style="display: none;">
+            <div class="card">
+                <button class="btn primary" id="add-user-btn" style="margin-bottom: 20px;">＋ 새 사용자 추가</button>
+                <table>
+                    <thead>
+                        <tr><th>사용자 ID (이메일)</th><th>역할</th><th>마지막 접속</th><th>관리</th></tr>
+                    </thead>
+                    <tbody id="user-table-body">
+                        </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="rules-view" style="display: none;">
+            <div class="card">
+                <button class="btn primary" id="add-rule-btn" style="margin-bottom: 20px;">＋ 새 규칙 추가</button>
+                <table>
+                    <thead>
+                        <tr><th>규칙 이름</th><th>처리 방식</th><th>정규식 (Regex)</th><th>활성 상태</th><th>관리</th></tr>
+                    </thead>
+                    <tbody id="rule-table-body">
+                       </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="status-view" style="display: none;">
+            <div class="stats-grid">
+                <div class="stat-card">
+                  <div class="label">프록시 서버 상태</div>
+                  <div class="value" style="color: var(--success);">정상</div>
+                </div>
+                <div class="stat-card">
+                  <div class="label">Gemini API 연결</div>
+                  <div class="value" style="color: var(--success);">연결됨</div>
+                </div>
+                 <div class="stat-card">
+                  <div class="label">DB 연결 상태</div>
+                  <div class="value" style="color: var(--warn);">연결 안 됨 (Demo)</div>
+                </div>
+            </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="user-modal">
+      <div class="modal-content">
+          <h3 id="user-modal-title">새 사용자 추가</h3>
+          <form id="user-form">
+              <input type="hidden" id="user-id-hidden">
+              <div class="form-field">
+                  <label for="user-email">사용자 ID (이메일)</label>
+                  <input type="email" id="user-email" class="input" required>
+              </div>
+              <div class="form-field">
+                  <label for="user-password">비밀번호 (새로 설정 시에만 입력)</label>
+                  <input type="password" id="user-password" class="input">
+              </div>
+              <div class="form-field">
+                  <label for="user-role">역할</label>
+                  <select id="user-role" class="input">
+                      <option value="user">User</option>
+                      <option value="admin">Admin</option>
+                  </select>
+              </div>
+              <div class="modal-actions">
+                  <button type="button" class="btn" id="user-modal-close">취소</button>
+                  <button type="submit" class="btn primary">저장</button>
+              </div>
+          </form>
+      </div>
+  </div>
+
+  <div class="modal-backdrop" id="rule-modal">
+      <div class="modal-content">
+          <h3 id="rule-modal-title">새 규칙 추가</h3>
+          <form id="rule-form">
+              <input type="hidden" id="rule-id-hidden">
+              <div class="form-field">
+                  <label for="rule-name">규칙 이름</label>
+                  <input type="text" id="rule-name" class="input" required placeholder="예: 주민등록번호">
+              </div>
+              <div class="form-field">
+                  <label for="rule-action">처리 방식</label>
+                  <select id="rule-action" class="input">
+                      <option value="mask">마스킹 (Mask)</option>
+                      <option value="block">차단 (Block)</option>
+                  </select>
+              </div>
+              <div class="form-field">
+                  <label for="rule-regex">정규식 (Regex)</label>
+                  <input type="text" id="rule-regex" class="input" required placeholder="\d{6}-?[1-4]\d{6}">
+              </div>
+               <div class="form-field">
+                  <label for="rule-status">상태</label>
+                  <select id="rule-status" class="input">
+                      <option value="active">활성</option>
+                      <option value="inactive">비활성</option>
+                  </select>
+              </div>
+              <div class="modal-actions">
+                  <button type="button" class="btn" id="rule-modal-close">취소</button>
+                  <button type="submit" class="btn primary">저장</button>
+              </div>
+          </form>
+      </div>
+  </div>
+
+
+<script>
+    // API 엔드포인트 정의
+    const API_BASE = '/api/admin';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // --- DOM 요소 캐싱 ---
+      const viewTitle = document.getElementById('view-title');
+      const views = document.querySelectorAll('main .content-wrap > section');
+      const navLinks = document.querySelectorAll('.nav-link');
+      navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+          // 링크를 클릭했을 때 페이지가 새로고침되는 것을 막음
+          e.preventDefault(); 
+          // showView 함수를 호출해서 화면을 전환함
+          showView(link.dataset.view);
+        });
+      });
+
+      const logTableBody = document.getElementById('log-table-body');
+      
+      // [신규] 필터 입력 요소 캐싱
+      const logSearchInput = document.getElementById('log-search');
+      const logDateInput = document.getElementById('log-date');
+      const logTypeSelect = document.getElementById('log-type');
+      
+      // --- 가상 데이터 (규칙은 아직 유지, 로그는 삭제) ---
+      const DUMMY_RULES = [ /* ... 기존 규칙 데이터 ... */ ];
+      let allLogs = []; // [신규] 서버에서 받아온 모든 로그를 저장할 변수
+
+      // --- 뷰 전환 로직 ---
+      const showView = (viewId) => {
+      // 1. 모든 뷰(<section>)를 일단 숨깁니다.
+      views.forEach(view => view.style.display = 'none');
+
+      // 2. 클릭된 메뉴에 해당하는 뷰만 화면에 보여줍니다.
+      const activeView = document.getElementById(viewId + '-view');
+      if (activeView) activeView.style.display = 'block';
+
+      // 3. 클릭된 메뉴에만 'active' 클래스를 추가해서 파란색으로 강조합니다.
+      navLinks.forEach(link => {
+        link.classList.toggle('active', link.dataset.view === viewId);
+      });
+
+      // 4. 페이지 상단 제목을 현재 뷰의 이름으로 바꿉니다.
+      const linkText = document.querySelector(`.nav-link[data-view="${viewId}"]`).textContent;
+      viewTitle.textContent = linkText.substring(2); // 메뉴 이름 앞의 이모지를 제거하고 제목으로 설정
+      };
+
+      // 로그 렌더링 함수: 필터링 기능 추가
+      const renderLogs = (filters = {}) => {
+          const filteredLogs = allLogs.filter(log => {
+              const matchesUser = !filters.user || (log.user && log.user.includes(filters.user));
+              const matchesDate = !filters.date || (log.ts && log.ts.startsWith(filters.date));
+              const matchesType = !filters.type || (log.pii && log.pii.includes(filters.type));
+              return matchesUser && matchesDate && matchesType;
+          });
+
+          logTableBody.innerHTML = '';
+          filteredLogs.forEach(log => {
+              const tr = document.createElement('tr');
+              tr.innerHTML = `
+                  <td>${log.ts || 'N/A'}</td>
+                  <td>${log.user || 'N/A'}</td>
+
+                  <td>${log.pii && log.pii.length ? log.pii.join(', ') : '-'}</td>
+                  <td><span class="tag ${log.action || 'default'}">${(log.action || 'N/A').toUpperCase()}</span></td>
+                  <td>${(log.user_prompt || '').substring(0, 30)}...</td>
+              `;
+              logTableBody.appendChild(tr);
+          });
+      };
+
+      // [신규] 서버에서 실제 로그 데이터를 가져오는 함수
+      const fetchLogs = async () => {
+          try {
+              const response = await fetch(`${API_BASE}/logs`);
+              if (!response.ok) throw new Error('로그를 불러오는 데 실패했습니다.');
+              allLogs = await response.json(); // 받아온 로그를 전역 변수에 저장
+              
+              // 날짜 기준으로 최신순 정렬
+              allLogs.sort((a, b) => new Date(b.ts) - new Date(a.ts));
+              
+              renderLogs(); // 필터 없이 전체 로그를 렌더링
+          } catch (error) {
+              console.error(error);
+              logTableBody.innerHTML = `<tr><td colspan="5" style="color:var(--danger);">${error.message}</td></tr>`;
+          }
+      };
+      
+      const renderRules = () => { /* ... 기존과 동일 ... */ };
+      const fetchUsersAndRender = async () => { /* ... 이전 단계에서 만든 함수 ... */ };
+
+      // --- 대시보드 차트 (기존과 동일) ---
+      const piiCtx = document.getElementById('pii-chart').getContext('2d');
+      // ... 차트 코드 ...
+      
+      // --- 이벤트 리스너 ---
+      navLinks.forEach(link => { /* ... */ });
+      // ... 모달 관련 이벤트 리스너 ...
+
+      // [신규] 로그 필터링 이벤트 리스너
+      logSearchInput.addEventListener('keyup', () => applyLogFilters());
+      logDateInput.addEventListener('change', () => applyLogFilters());
+      logTypeSelect.addEventListener('change', () => applyLogFilters());
+
+      const applyLogFilters = () => {
+          const filters = {
+              user: logSearchInput.value,
+              date: logDateInput.value,
+              type: logTypeSelect.value,
+          };
+          renderLogs(filters);
+      };
+
+      // [신규] 대시보드 통계를 가져와서 업데이트하는 함수
+    const fetchDashboardStats = async () => {
+        try {
+            const response = await fetch(`${API_BASE}/dashboard-stats`);
+            if (!response.ok) return;
+        
+            const stats = await response.json();
+            document.getElementById('stat-today-requests').textContent = stats.today_requests;
+            document.getElementById('stat-pii-detected').textContent = stats.pii_detected;
+            document.getElementById('stat-blocked').textContent = stats.blocked;
+            document.getElementById('stat-active-users').textContent = stats.active_users;
+        } catch (error) {
+            console.error("Dashboard stats error:", error);
+        }
+    };
+
+      // --- 초기화 ---
+      const init = () => {
+          fetchLogs(); // [수정됨] 가상 데이터 대신 실제 로그 fetch
+          fetchLogs();
+          fetchUsersAndRender();
+          renderRules();
+          fetchDashboardStats();
+          renderTrendsChart();
+          setInterval(fetchDashboardStats, 5000);
+          showView('dashboard');
+      };
+      
+      init();
+    });
+
+    let trendsChartInstance = null;
+    let piiChartInstance = null;
+
+    // --- 대시보드 차트 ---
+    function renderPiiChart() {
+      if (piiChartInstance) {
+          piiChartInstance.destroy();
+      }
+      const piiCtx = document.getElementById('pii-chart').getContext('2d');
+      piiChartInstance = new Chart(piiCtx, {
+        type: 'pie',
+        data: {
+          labels: ['전화번호', '이메일', '카드번호', '주민번호'], // 이 데이터도 나중에 API로 받아오면 좋습니다.
+          datasets: [{
+            label: '탐지 건수',
+            data: [45, 25, 15, 3],
+            backgroundColor: ['#60a5fa', '#34d399', '#f87171', '#facc15'],
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+  }
+    // 꺾은선 그래프를 그리는 함수
+    const renderTrendsChart = async () => {
+      debugger;
+    console.log("차트 렌더링 함수 시작. 현재 trendsChartInstance:", trendsChartInstance);
+        try {
+            const response = await fetch(`${API_BASE}/trends`);
+            if (!response.ok) return;
+        
+            const trendsData = await response.json();
+        
+            if (trendsChartInstance) {
+                trendsChartInstance.destroy();
+            }
+
+            const trendsCtx = document.getElementById('trends-chart').getContext('2d');
+        
+            trendsChartInstance = new Chart(trendsCtx, {
+                type: 'line',
+                data: trendsData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        } catch (error) {
+            console.error("Trends chart error:", error);
+        }
+    };
+</script>
+</body>
+</html>
