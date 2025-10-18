@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chat Proxy – Clean Light UI</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root{
+      --bg:#ffffff; --panel:#ffffff; --muted:#f6f8fb; --ring:#e6eaf2;
+      --text:#101828; --sub:#667085;
+      --blue:#2563eb; --blue-2:#60a5fa; --mint:#10b981;
+      --danger:#ef4444; --success:#16a34a; --shadow:0 10px 24px rgba(16,24,40,.06);
+      --radius:16px; --radius-sm:12px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:
+          radial-gradient(800px 300px at 80% -80px, rgba(37,99,235,.08), transparent),
+          radial-gradient(600px 240px at -100px -120px, rgba(16,185,129,.06), transparent),
+          var(--bg);color:var(--text);font:500 15px/1.55 "Pretendard","Inter","Noto Sans KR",system-ui}
+    .layout{display:grid;grid-template-columns:280px 1fr;gap:0;height:100vh}
+
+    /* Sidebar */
+    .sidebar{background:#f8fafc;backdrop-filter:saturate(1.1);border-right:1px solid var(--ring);padding:16px 14px;display:flex;flex-direction:column}
+    .brand{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+    .logo{width:28px;height:28px;border-radius:10px;background:conic-gradient(from 180deg,var(--blue),var(--mint),var(--blue));box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+    .brand h1{font-size:16px;margin:0;letter-spacing:.2px}
+    .sb-btn{width:100%;display:flex;align-items:center;gap:8px;padding:10px 12px;margin:6px 0;border:1px solid var(--ring);background:var(--panel);color:var(--text);border-radius:12px;cursor:pointer;box-shadow:var(--shadow)}
+    .sb-btn.primary{background:linear-gradient(180deg,rgba(37,99,235,.10),rgba(37,99,235,.04));border-color:#c7d7fe}
+    .group-title{font-size:12px;color:#98a2b3;margin:16px 6px 8px}
+    .recent{flex:1;overflow:auto;border-top:1px dashed var(--ring);margin-top:12px;padding-top:12px}
+    .recent .item{padding:8px 10px;border-radius:10px;display:block;color:inherit;text-decoration:none;border:1px solid transparent}
+    .recent .item:hover{background:#eef2f7;border-color:var(--ring)}
+
+    /* Main */
+    .main{display:grid;grid-template-rows:auto 1fr auto;height:100vh;background:var(--bg)}
+    .topbar{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--ring);background:var(--panel)}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px dashed var(--ring);color:#98a2b3;background:#fff}
+    .status{width:8px;height:8px;border-radius:50%;background:#9aa4b2}
+    .status.ok{background:var(--success)}
+    .status.err{background:var(--danger)}
+    .grow{flex:1}
+    .select, .btn{border:1px solid var(--ring);background:var(--panel);color:var(--text);border-radius:12px;box-shadow:var(--shadow)}
+    .select{padding:8px 10px}
+    .btn{padding:10px 14px;cursor:pointer}
+
+    /* Home */
+    .home{display:grid;place-items:center;padding:40px}
+    .hero{max-width:760px;text-align:center}
+    .hero h2{--g:linear-gradient(90deg,var(--blue),var(--blue-2));background:var(--g);-webkit-background-clip:text;background-clip:text;color:transparent;font-size:40px;font-weight:800;letter-spacing:-.3px;margin:24px 0}
+    .hero p{color:var(--sub);margin:0 0 24px}
+    .name-chip{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--ring);border-radius:999px;padding:6px 10px;background:#fff;color:#475467;font-size:12px}
+    .name-chip button{border:0;background:transparent;color:var(--blue);cursor:pointer}
+    .search{display:flex;gap:10px;border:1px solid var(--ring);background:#fff;border-radius:16px;padding:12px 14px;align-items:center;box-shadow:var(--shadow)}
+    .search input{flex:1;background:transparent;border:0;outline:none;color:var(--text);font-size:16px}
+    .search .btn{background:linear-gradient(180deg,rgba(37,99,235,.12),rgba(37,99,235,.04));border-color:#c7d7fe}
+
+    /* Chat view */
+    .chat{display:none;grid-template-rows:1fr auto;height:calc(100vh - 58px)}
+    .history{overflow:auto;padding:16px 18px}
+    .msg{display:flex;gap:12px;margin:14px 0}
+    .avatar{width:34px;height:34px;border-radius:10px;background:#eef2f7;display:grid;place-items:center;color:#475467;border:1px solid var(--ring)}
+    .bubble{max-width:75%;padding:12px 14px;border:1px solid var(--ring);border-radius:14px;background:#fff;box-shadow:var(--shadow)}
+    .user .bubble{margin-left:auto;background:linear-gradient(180deg,rgba(37,99,235,.08),rgba(37,99,235,.02));border-top-right-radius:6px}
+    .assistant .bubble{background:#ffffff;border-top-left-radius:6px}
+    .role{font-size:12px;color:#98a2b3;margin-bottom:6px}
+
+    .composer{position:sticky;bottom:0;backdrop-filter:saturate(1.1);padding:12px 18px;border-top:1px solid var(--ring);background:#ffffff}
+    .composer-inner{display:flex;gap:10px;align-items:flex-end;max-width:980px;margin:0 auto}
+    textarea{flex:1;min-height:52px;max-height:180px;resize:vertical;border:1px solid var(--ring);background:#fff;color:var(--text);padding:12px 12px 14px;border-radius:12px;outline:none;box-shadow:var(--shadow)}
+    textarea::placeholder{color:#98a2b3}
+
+    @media (max-width:980px){.layout{grid-template-columns:1fr} .sidebar{display:none} .hero h2{font-size:30px} .bubble{max-width:100%}}
+
+    .security-notice {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--ring);
+      font-size: 13px;
+      color: var(--sub);
+      opacity: 0.8;
+    }
+</style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand"><div class="logo"></div><h1>Chat Proxy</h1></div>
+      <button class="sb-btn primary" id="newChatBtn">＋ 새 채팅</button>
+      <div class="group-title">도구</div>
+      <button class="sb-btn" id="policiesBtn">정책 관리(준비중)</button>
+      <button class="sb-btn" id="logsBtn">감사 로그(준비중)</button>
+      <div class="group-title">최근</div>
+      <div class="recent" id="recentList"></div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <span class="pill"><span class="status" id="healthDot"></span> 프록시 상태</span>
+        <div class="grow"></div>
+        <select id="model" class="select" aria-label="모델 선택">
+          <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+          <option value="gemini-2.5-pro" selected>Gemini 2.5 Pro</option>
+          <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+          <option value="gpt-4o-mini">ChatGPT (gpt-4o-mini)</option>
+          <option value="demo-local">DEMO (로컬 에코)</option>
+        </select>
+        <button class="btn" id="exportBtn">내보내기</button>
+        <button class="btn" id="clearBtn">초기화</button>
+      </div>
+
+      <section class="home" id="home">
+        <div class="hero">
+          <h2 id="greet">안녕하세요.</h2>
+          <p>무엇을 도와드릴까요? 민감한 정보는 프록시가 자동으로 점검하고 처리합니다.</p>
+          <div style="margin:8px 0 18px">
+            <span class="name-chip">표시 이름: <strong id="namePreview">비개인화</strong> <button id="editNameBtn">변경</button></span>
+          </div>
+          <div class="search">
+            <input id="homeInput" placeholder="질문을 입력하세요…" />
+            <button class="btn" id="homeSend">보내기</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="logs" id="logs" style="display:none; padding:16px;">
+        <h2>감사 로그</h2>
+        <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr style="background-color:#f6f8fb;">
+                <th style="padding:10px; text-align:left; border-bottom:1px solid #e6eaf2;">시간</th>
+                <th style="padding:10px; text-align:left; border-bottom:1px solid #e6eaf2;">입력 프롬프트</th>
+                <th style="padding:10px; text-align:left; border-bottom:1px solid #e6eaf2;">탐지 내역</th>
+                <th style="padding:10px; text-align:left; border-bottom:1px solid #e6eaf2;">LLM 응답</th>
+                <th style="padding:10px; text-align:left; border-bottom:1px solid #e6eaf2;">액션</th>
+              </tr>
+            </thead>
+            <tbody id="logTableBody">
+              </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="chat" id="chat">
+        <div class="history" id="history" aria-live="polite"></div>
+        <div class="composer">
+          <div class="composer-inner">
+            <textarea id="input" placeholder="메시지를 입력하세요… (Enter: 전송, Shift+Enter: 줄바꿈)" spellcheck="false"></textarea>
+            <button class="btn" id="sendBtn">보내기</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <template id="msgTpl">
+    <div class="msg">
+      <div class="bubble">
+        <div class="role" data-role-label></div>
+        <div class="content"></div>
+      </div>
+    </div>
+  </template>
+
+  <script>
+    // === Config ===
+    const API_BASE = "";
+    const ENDPOINT = { chat: `${API_BASE}/chat`, health: `${API_BASE}/health`, logs: `${API_BASE}/admin/logs` };
+
+    // === Elements ===
+    const el = (s)=>document.querySelector(s);
+    const historyEl = el('#history');
+    const input = el('#input');
+    const sendBtn = el('#sendBtn');
+    const modelSel = el('#model');
+    const clearBtn = el('#clearBtn');
+    const exportBtn = el('#exportBtn');
+    const healthDot = el('#healthDot');
+    const recentList = el('#recentList');
+    const home = el('#home');
+    const chat = el('#chat');
+    const homeInput = el('#homeInput');
+    const homeSend = el('#homeSend');
+    const newChatBtn = el('#newChatBtn');
+    const greet = el('#greet');
+    const namePreview = el('#namePreview');
+    const editNameBtn = el('#editNameBtn');
+    const logsEl = el('#logs');
+    const logsTableBody = el('#logTableBody');
+    const logsBtn = el('#logsBtn');
+
+    // === State ===
+    const state = { messages: [], sending:false, recents: [] };
+
+    // === View Switch (통합된 뷰 전환 로직) ===
+    function toView(viewName, text){
+      home.style.display='none';
+      chat.style.display='none';
+      logsEl.style.display='none';
+
+      if(viewName === 'home'){
+        home.style.display='grid';
+      }else if(viewName === 'chat'){
+        chat.style.display='grid';
+        if(text){ pushUser(text); reply(); }
+        else render();
+        addRecentPreview();
+      }else if(viewName === 'logs'){
+        logsEl.style.display='block';
+        fetchAndRenderLogs();
+      }
+    }
+
+    // 로그 불러와서 화면에 표시
+    async function fetchAndRenderLogs(){
+      logsTableBody.innerHTML = '';
+      try{
+        const res = await fetch(ENDPOINT.logs, {cache:'no-store'});
+        if(!res.ok) throw new Error('로그를 불러오는 데 실패했습니다.');
+        const logs = await res.json();
+        logs.forEach(log => {
+          const row = document.createElement('tr');
+          const timestamp = new Date(log.timestamp * 1000).toLocaleString();
+          const detections = (log.detections_in || []).map(d=>d.name).join(', ') || '없음';
+          const action = (log.detections_in||[]).some(d=>d.action==='block') ? '차단' : '마스킹';
+
+          row.innerHTML = `
+            <td style="padding:10px; border-bottom:1px solid #e6eaf2;">${timestamp}</td>
+            <td style="padding:10px; border-bottom:1px solid #e6eaf2;">${log.user_prompt}</td>
+            <td style="padding:10px; border-bottom:1px solid #e6eaf2;">${detections}</td>
+            <td style="padding:10px; border-bottom:1px solid #e6eaf2;">${log.llm_response}</td>
+            <td style="padding:10px; border-bottom:1px solid #e6eaf2;">${action}</td>
+          `;
+          logsTableBody.appendChild(row);
+        });
+      }catch(err){
+        logsTableBody.innerHTML = `<tr><td colspan="5" style="padding:10px; color:#ef4444;">오류: ${err.message}</td></tr>`;
+      }
+    }
+
+    // === Greeting (privacy‑first) ===
+    function loadName(){ return localStorage.getItem('displayName') || ''; }
+    function saveName(n){ if(n) localStorage.setItem('displayName', n); else localStorage.removeItem('displayName'); }
+    function updateGreeting(){
+      const hour = new Date().getHours();
+      const hello = '안녕하세요';
+      const name = loadName();
+      greet.textContent = name ? `${hello}, ${name}` : `${hello}.`;
+      namePreview.textContent = name ? name : '비개인화';
+    }
+
+    editNameBtn.onclick = ()=>{
+      const cur = loadName();
+      const next = prompt('표시할 이름을 입력하세요 (비워두면 이름 표시 안 함)', cur);
+      if(next===null) return; // cancel
+      const trimmed = (next||'').trim();
+      saveName(trimmed);
+      updateGreeting();
+    };
+
+    // === Rendering ===
+    function render(){
+      historyEl.innerHTML = '';
+      state.messages.forEach((m)=>historyEl.appendChild(messageNode(m)));
+      historyEl.scrollTop = historyEl.scrollHeight;
+      renderRecents();
+    }
+    function renderRecents(){
+      recentList.innerHTML='';
+      state.recents.forEach((r,i)=>{
+        const a=document.createElement('a');
+        a.href='#';
+        a.className='item';
+        a.textContent=r.title || `대화 ${i+1}`;
+        a.onclick=(e)=>{
+          e.preventDefault();
+          state.messages = JSON.parse(r.snapshot);
+          toView('chat'); // 이전 대화 내용만 불러오도록 수정
+        };
+        recentList.appendChild(a);
+      });
+    }
+    function messageNode(m) {
+        const tpl = el('#msgTpl');
+        const node = tpl.content.firstElementChild.cloneNode(true);
+        const avatar = node.querySelector('[data-role]');
+        const label = node.querySelector('[data-role-label]');
+        const content = node.querySelector('.content');
+        const bubble = node.querySelector('.bubble'); 
+
+        node.classList.add(m.role === 'user' ? 'user' : 'assistant');
+        label.textContent = m.role === 'user' ? '사용자' : '어시스턴트';
+        content.innerHTML = renderMarkdownSafe(m.content);
+
+        // notice 정보가 있으면, 별도의 div를 만들어서 버블 안에 추가
+        if (m.notice) {
+            const noticeEl = document.createElement('div');
+            noticeEl.className = 'security-notice';
+            noticeEl.textContent = m.notice;
+            bubble.appendChild(noticeEl);
+        }
+        return node;
+    }
+
+    // Minimal markdown
+    function renderMarkdownSafe(t){ if(!t) return ''; return escapeHtml(t).replace(/```([\s\S]*?)```/g,'<pre><code>$1</code></pre>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\n/g,'<br/>'); }
+    function escapeHtml(s){ return s.replace(/[&<>\"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])); }
+
+    // === Chat Logic ===
+    function pushUser(content){ state.messages.push({role:'user', content}); input.value=''; render(); }
+    async function send(){ const content = input.value.trim(); if(!content || state.sending) return; pushUser(content); await reply(); }
+
+    async function reply(){
+        state.sending = true; sendBtn.disabled = true; sendBtn.textContent = '전송 중…';
+        const model = modelSel.value;
+        try {
+            const res = await fetch(ENDPOINT.chat, {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({ model, messages: state.messages })
+            });
+            const data = await res.json();
+        
+            let assistantMessage;
+            if (!res.ok) {
+                assistantMessage = {
+                    role: 'assistant',
+                    content: `요청이 차단되었습니다.\n\n사유: ${data.detail || 'ETC'}`
+                };
+            } else {
+                assistantMessage = {
+                    role: 'assistant',
+                    content: data.content || "",
+                    notice: data.notice || null // 백엔드가 보내준 notice 정보를 메시지 객체에 포함
+                };
+            }
+            state.messages.push(assistantMessage);
+        } catch(err) {
+            state.messages.push({role:'assistant', content:`요청 오류: \`${err.message}\``});
+        } finally {
+            state.sending=false; sendBtn.disabled=false; sendBtn.textContent='보내기'; render();
+        }
+    }
+
+    // Health
+    async function health(){ try{ const r=await fetch(ENDPOINT.health,{cache:'no-store'}); const ok=r.ok && (await r.json()).ok!==false; healthDot.classList.toggle('ok',ok); healthDot.classList.toggle('err',!ok);}catch{ healthDot.classList.remove('ok'); healthDot.classList.add('err'); } }
+
+    // Recents (preview only – in‑memory)
+    function addRecentPreview(){ const first=state.messages.find(m=>m.role==='user'); if(!first) return; state.recents.unshift({title:first.content.slice(0,24), ts:Date.now(), snapshot:JSON.stringify(state.messages)}); state.recents = state.recents.slice(0,15); renderRecents(); }
+    function renderRecents(){ recentList.innerHTML=''; state.recents.forEach((r,i)=>{ const a=document.createElement('a'); a.href='#'; a.className='item'; a.textContent=r.title || `대화 ${i+1}`; a.onclick=(e)=>{ e.preventDefault(); state.messages = JSON.parse(r.snapshot); toView('chat'); }; recentList.appendChild(a); }); }
+
+    // Export / Clear
+    function exportChat(){ const blob=new Blob([JSON.stringify({model:modelSel.value,messages:state.messages},null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`chat_${new Date().toISOString().replace(/[:.]/g,'-')}.json`; a.click(); URL.revokeObjectURL(url); }
+
+    // 관리자 역할 확인 및 버튼 표시
+function checkAdminRole(role) {
+  const policiesBtn = document.getElementById('policiesBtn');
+    const logsBtn = document.getElementById('logsBtn');
+    // 역할이 'admin'일 경우에만 버튼을 보이게 함
+    if (role === 'admin') {
+        policiesBtn.style.display = 'block';
+        logsBtn.style.display = 'block';
+    } else {
+        policiesBtn.style.display = 'none';
+        logsBtn.style.display = 'none';
+    }
+}
+
+    // Events
+    input.addEventListener('keydown', (e)=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); send(); } });
+    sendBtn.addEventListener('click', send);
+    clearBtn.addEventListener('click', ()=>{ state.messages=[]; render(); });
+    exportBtn.addEventListener('click', exportChat);
+    homeInput.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ e.preventDefault(); toView('chat', homeInput.value.trim()); }});
+    homeSend.addEventListener('click', ()=>toView('chat', homeInput.value.trim()));
+    newChatBtn.onclick = ()=>toView('home');
+    logsBtn.onclick = ()=>toView('logs');
+
+    // 페이지 로드 시 사용자 역할 확인
+const userRole = localStorage.getItem('userRole');
+checkAdminRole(userRole);
+
+    // Init
+    updateGreeting();
+    toView('home'); health(); setInterval(health, 5000);
+
+    const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
+  </script>
+</body>
+</html>
