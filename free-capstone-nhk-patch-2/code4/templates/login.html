@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chat Proxy – 로그인</title>
+  <style>
+    :root{
+      --bg:#ffffff; --panel:#ffffff; --muted:#f6f8fb; --ring:#e6eaf2;
+      --text:#101828; --sub:#667085;
+      --blue:#2563eb; --blue-2:#60a5fa; --mint:#10b981;
+      --danger:#ef4444; --success:#16a34a; --shadow:0 10px 24px rgba(16,24,40,.06);
+      --radius:16px; --radius-sm:12px;
+    }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{
+      margin:0; color:var(--text); background:
+        radial-gradient(800px 300px at 80% -80px, rgba(37,99,235,.08), transparent),
+        radial-gradient(600px 240px at -100px -120px, rgba(16,185,129,.06), transparent),
+        var(--bg);
+      font:500 15px/1.55 "Pretendard","Inter","Noto Sans KR",system-ui;
+    }
+    .wrap{min-height:100%; display:grid; place-items:center; padding:32px}
+    .card{
+      width:100%; max-width:420px; background:var(--panel);
+      border:1px solid var(--ring); border-radius:var(--radius);
+      box-shadow:var(--shadow); padding:22px;
+    }
+    .brand{display:flex; align-items:center; gap:10px; margin-bottom:14px}
+    .logo{width:36px;height:36px;border-radius:12px;
+      background:conic-gradient(from 180deg,var(--blue),var(--mint),var(--blue));
+      box-shadow:0 0 0 4px rgba(59,130,246,.10)}
+    .brand h1{font-size:18px; margin:0}
+    .title{margin:6px 0 2px; font-weight:800; font-size:24px; letter-spacing:-.2px}
+    .sub{color:var(--sub); margin:0 0 16px}
+
+    .field{margin:12px 0}
+    .label{display:flex; justify-content:space-between; font-size:13px; color:#475467; margin-bottom:6px}
+    .input{
+      width:100%; border:1px solid var(--ring); background:#fff; color:var(--text);
+      border-radius:12px; padding:12px 12px; outline:none; box-shadow:var(--shadow)
+    }
+    .row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin:10px 0 2px}
+    .checkbox{display:flex; align-items:center; gap:8px; font-size:13px; color:#475467}
+    .btn{
+      width:100%; border:1px solid #c7d7fe; background:linear-gradient(180deg,rgba(37,99,235,.12),rgba(37,99,235,.04));
+      color:var(--text); border-radius:12px; padding:12px 14px; cursor:pointer; box-shadow:var(--shadow); font-weight:600
+    }
+    .btn:disabled{opacity:.6; cursor:not-allowed}
+    .muted{color:#98a2b3; font-size:12px; text-align:center; margin-top:12px}
+    .error{color:var(--danger); font-size:13px; margin:8px 0 0}
+    .divider{display:flex; align-items:center; gap:10px; margin:12px 0}
+    .divider::before,.divider::after{content:""; flex:1; height:1px; background:var(--ring)}
+    .outline{
+      width:100%; background:#fff; border:1px solid var(--ring); border-radius:12px; padding:10px 12px;
+      display:flex; align-items:center; gap:8px; cursor:pointer
+    }
+    .eye{position:absolute; right:12px; top:50%; transform:translateY(-50%); cursor:pointer; color:#667085}
+    .passbox{position:relative}
+    a{color:var(--blue); text-decoration:none}
+    .top-links{position:fixed; right:18px; top:18px; display:flex; gap:8px}
+    .pill{padding:6px 10px; border:1px dashed var(--ring); border-radius:999px; font-size:12px; color:#98a2b3; background:#fff}
+  </style>
+</head>
+<body>
+  <div class="top-links">
+    <span class="pill">프록시 연결 필요</span>
+  </div>
+
+  <main class="wrap">
+    <section class="card" role="dialog" aria-labelledby="title">
+      <div class="brand"><div class="logo"></div><h1>Chat Proxy</h1></div>
+      <h2 id="title" class="title">로그인</h2>
+      <p class="sub">팀 계정으로 로그인하세요. 민감정보는 전송 전에 프록시에서 처리됩니다.</p>
+
+      <form id="form" novalidate>
+        <div class="field">
+          <div class="label"><label for="email">이메일</label></div>
+          <input id="email" class="input" type="email" placeholder="you@company.com" autocomplete="username" required />
+        </div>
+
+        <div class="field passbox">
+          <div class="label">
+            <label for="password">비밀번호</label>
+            <a href="#" onclick="alert('비밀번호 재설정은 준비중입니다.');return false;">비밀번호 찾기</a>
+          </div>
+          <input id="password" class="input" type="password" placeholder="••••••••" autocomplete="current-password" required />
+          <span class="eye" id="togglePw" aria-label="비밀번호 표시/숨기기" title="표시/숨기기">👁️</span>
+        </div>
+
+        <div class="row">
+          <label class="checkbox"><input id="remember" type="checkbox" /> 로그인 유지</label>
+          <span></span>
+        </div>
+
+        <button class="btn" id="submitBtn" type="submit">로그인</button>
+        <p id="error" class="error" style="display:none"></p>
+
+        <div class="divider"><span class="muted">또는</span></div>
+        <button type="button" class="outline" onclick="demoLogin()">
+          <span>🔓</span> 게스트로 둘러보기
+        </button>
+
+        <p class="muted">로그인하면 <a href="#" onclick="alert('약관은 준비중입니다.');return false;">서비스 약관</a> 및 <a href="#" onclick="alert('정책은 준비중입니다.');return false;">개인정보 처리방침</a>에 동의하게 됩니다.</p>
+      </form>
+    </section>
+  </main>
+
+  <script>
+    // ===== 설정 =====
+    // 프록시 백엔드 주소 (당신 환경에 맞게 수정)
+    const LOGIN_ENDPOINT = '/login'; // 
+    const HEALTH_ENDPOINT = '/health'; // 
+    
+    // ===== UI 로직 =====
+    const form = document.getElementById('form');
+    const email = document.getElementById('email');
+    const password = document.getElementById('password');
+    const remember = document.getElementById('remember');
+    const submitBtn = document.getElementById('submitBtn');
+    const errorEl = document.getElementById('error');
+    const togglePw = document.getElementById('togglePw');
+
+    // 비밀번호 표시/숨기기
+    togglePw.addEventListener('click', ()=>{
+      password.type = password.type === 'password' ? 'text' : 'password';
+    });
+
+    // 서버 상태 표시 (상단 pill 텍스트 업데이트)
+    fetch(HEALTH_ENDPOINT, {cache:'no-store'}).then(r=>r.ok).catch(()=>false);
+
+    // 폼 제출
+    form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorEl.style.display = 'none';
+    const emailVal = email.value.trim();
+    const pwVal = password.value;
+
+    if (!emailVal || !pwVal) {
+        showError('이메일과 비밀번호를 입력하세요.');
+        return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = '확인 중…';
+    
+    try {
+        const res = await fetch(LOGIN_ENDPOINT, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: emailVal, password: pwVal })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.error || '로그인 실패');
+        }
+
+        // 1. 역할을 브라우저에 저장합니다.
+        localStorage.setItem('userRole', data.role);
+
+        // 2. 역할에 따라 다른 페이지로 이동시킵니다.
+        if (data.role === 'admin') {
+          window.location.href = '/admin'; // 관리자는 /admin 으로
+        } else {
+          window.location.href = '/chat';  // 일반 사용자는 /chat 으로
+        }
+    } catch (err) {
+        showError(err.message || '로그인 중 오류가 발생했습니다.');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '로그인';
+    }
+    });
+
+    function showError(msg){
+      errorEl.textContent = msg;
+      errorEl.style.display = 'block';
+    }
+    const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
+
+    // Enter 키로 제출
+    [email,password].forEach(i=>i.addEventListener('keydown',e=>{
+      if(e.key==='Enter') form.requestSubmit();
+    }));
+    // 게스트 로그인
+    function demoLogin() {
+      localStorage.setItem('userRole', 'guest');
+      location.href = 'Chat%20Proxy.html';
+    }
+  </script>
+</body>
+</html>
