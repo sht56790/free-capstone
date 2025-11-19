@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chat Proxy – Clean Light UI</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root{
+      --bg:#ffffff; --panel:#ffffff; --muted:#f6f8fb; --ring:#e6eaf2;
+      --text:#101828; --sub:#667085;
+      --blue:#2563eb; --blue-2:#60a5fa; --mint:#10b981;
+      --danger:#ef4444; --success:#16a34a; --shadow:0 10px 24px rgba(16,24,40,.06);
+      --radius:16px; --radius-sm:12px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:
+          radial-gradient(800px 300px at 80% -80px, rgba(37,99,235,.08), transparent),
+          radial-gradient(600px 240px at -100px -120px, rgba(16,185,129,.06), transparent),
+          var(--bg);color:var(--text);font:500 15px/1.55 "Pretendard","Inter","Noto Sans KR",system-ui}
+    .layout{display:grid;grid-template-columns:280px 1fr;gap:0;height:100vh}
+
+    /* drag & drop */
+    .drop-zone {
+      position: relative; /* 자식 요소(overlay)의 기준점 */
+    }
+
+    .drop-zone-overlay {
+      position: absolute;
+      inset: 0; /* 부모 요소(drop-zone)를 꽉 채움 */
+      background-color: rgba(37, 99, 235, 0.1); /* 반투명 파란색 배경 */
+      border: 2px dashed var(--blue);
+      border-radius: var(--radius);
+      display: none; /* 평소에는 숨김 */
+      place-items: center; /* 중앙 정렬 */
+      font-weight: 600;
+      color: var(--blue);
+      pointer-events: none; /* 아래 요소 클릭 방해 금지 */
+      z-index: 10;
+    }
+
+    .drop-zone.dragover .drop-zone-overlay {
+      display: grid; /* 드래그 중일 때만 보이게 함 */
+    }
+    
+    /* Sidebar */
+    .sidebar{background:#f8fafc;backdrop-filter:saturate(1.1);border-right:1px solid var(--ring);padding:16px 14px;display:flex;flex-direction:column}
+    .brand{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+    .logo{width:28px;height:28px;border-radius:10px;background:conic-gradient(from 180deg,var(--blue),var(--mint),var(--blue));box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+    .brand h1{font-size:16px;margin:0;letter-spacing:.2px}
+    .sb-btn{width:100%;display:flex;align-items:center;gap:8px;padding:10px 12px;margin:6px 0;border:1px solid var(--ring);background:var(--panel);color:var(--text);border-radius:12px;cursor:pointer;box-shadow:var(--shadow)}
+    .sb-btn.primary{background:linear-gradient(180deg,rgba(37,99,235,.10),rgba(37,99,235,.04));border-color:#c7d7fe}
+    .group-title{font-size:12px;color:#98a2b3;margin:16px 6px 8px}
+    .recent{flex:1;overflow:auto;border-top:1px dashed var(--ring);margin-top:12px;padding-top:12px}
+    .recent .item{padding:8px 10px;border-radius:10px;display:block;color:inherit;text-decoration:none;border:1px solid transparent}
+    .recent .item:hover{background:#eef2f7;border-color:var(--ring)}
+
+    /* Main */
+    .main{display:grid;grid-template-rows:auto 1fr auto;height:100vh;background:var(--bg)}
+    .topbar{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--ring);background:var(--panel)}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px dashed var(--ring);color:#98a2b3;background:#fff}
+    .status{width:8px;height:8px;border-radius:50%;background:#9aa4b2}
+    .status.ok{background:var(--success)}
+    .status.err{background:var(--danger)}
+    .grow{flex:1}
+    .select, .btn{border:1px solid var(--ring);background:var(--panel);color:var(--text);border-radius:12px;box-shadow:var(--shadow)}
+    .select{padding:8px 10px}
+    .btn{padding:10px 14px;cursor:pointer}
+
+    /* Home */
+    .home{display:grid;place-items:center;padding:40px}
+    .hero{max-width:760px;text-align:center}
+    .hero h2{--g:linear-gradient(90deg,var(--blue),var(--blue-2));background:var(--g);-webkit-background-clip:text;background-clip:text;color:transparent;font-size:40px;font-weight:800;letter-spacing:-.3px;margin:24px 0}
+    .hero p{color:var(--sub);margin:0 0 24px}
+    .name-chip{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--ring);border-radius:999px;padding:6px 10px;background:#fff;color:#475467;font-size:12px}
+    .name-chip button{border:0;background:transparent;color:var(--blue);cursor:pointer}
+    .search{display:flex;gap:10px;border:1px solid var(--ring);background:#fff;border-radius:16px;padding:12px 14px;align-items:center;box-shadow:var(--shadow)}
+    .search input{flex:1;background:transparent;border:0;outline:none;color:var(--text);font-size:16px}
+    .search .btn{background:linear-gradient(180deg,rgba(37,99,235,.12),rgba(37,99,235,.04));border-color:#c7d7fe}
+
+    /* Chat view */
+    .chat{display:none;grid-template-rows:1fr auto;height:calc(100vh - 58px)}
+    .history{overflow:auto;padding:16px 18px}
+    .msg{display:flex;gap:12px;margin:14px 0}
+    .avatar{width:34px;height:34px;border-radius:10px;background:#eef2f7;display:grid;place-items:center;color:#475467;border:1px solid var(--ring)}
+    .bubble{max-width:75%;padding:12px 14px;border:1px solid var(--ring);border-radius:14px;background:#fff;box-shadow:var(--shadow)}
+    .user .bubble{margin-left:auto;background:linear-gradient(180deg,rgba(37,99,235,.08),rgba(37,99,235,.02));border-top-right-radius:6px}
+    .assistant .bubble{background:#ffffff;border-top-left-radius:6px}
+    .role{font-size:12px;color:#98a2b3;margin-bottom:6px}
+
+    .composer{position:sticky;bottom:0;backdrop-filter:saturate(1.1);padding:12px 18px;border-top:1px solid var(--ring);background:#ffffff}
+    .composer-inner{display:flex;gap:10px;align-items:flex-end;max-width:980px;margin:0 auto}
+    textarea{flex:1;min-height:52px;max-height:180px;resize:vertical;border:1px solid var(--ring);background:#fff;color:var(--text);padding:12px 12px 14px;border-radius:12px;outline:none;box-shadow:var(--shadow)}
+    textarea::placeholder{color:#98a2b3}
+
+    @media (max-width:980px){.layout{grid-template-columns:1fr} .sidebar{display:none} .hero h2{font-size:30px} .bubble{max-width:100%}}
+
+    .security-notice {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--ring);
+      font-size: 13px;
+      color: var(--sub);
+      opacity: 0.8;
+    }
+</style>
+</head>
+<body class="drop-zone">
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand"><div class="logo"></div><h1>Chat Proxy</h1></div>
+      <button class="sb-btn primary" id="newChatBtn">＋ 새 채팅</button>
+      <div class="group-title">도구</div>
+      <button class="sb-btn" id="policiesBtn">정책 관리(준비중)</button>
+      <button class="sb-btn" id="logsBtn">감사 로그(준비중)</button>
+      <div class="group-title">최근</div>
+      <div class="recent" id="recentList"></div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <span class="pill"><span class="status" id="healthDot"></span> 프록시 상태</span>
+        <div class="grow"></div>
+        <select id="model" class="select" aria-label="모델 선택">
+          <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (RAG)</option>
+          <option value="gemini-1.5-pro">Gemini 1.5 Pro (RAG)</option>
+          <option value="ollama:qwen3:8b" selected>Ollama - qwen3:8b</option>
+          <option value="ollama:llama3.1:8b">Ollama - llama3.1:8b</option>
+          <option value="ollama:mistral:7b">Ollama - mistral:7b</option>
+          <option value="demo-local">DEMO (로컬 에코)</option>
+        </select>
+        <button class="btn" id="exportBtn">내보내기</button>
+        <button class="btn" id="clearBtn">초기화</button>
+      </div>
+
+      <section class="home" id="home">
+        <div class="hero">
+          <h2 id="greet">안녕하세요.</h2>
+          <p>무엇을 도와드릴까요? 민감한 정보는 프록시가 자동으로 점검하고 처리합니다.</p>
+          <div style="margin:8px 0 18px">
+            <span class="name-chip">표시 이름: <strong id="namePreview">비개인화</strong> <button id="editNameBtn">변경</button></span>
+          </div>
+          <div class="search">
+            <input id="homeInput" placeholder="질문을 입력하세요…" />
+            
+            <button class="btn" id="fileBtnHome" title="파일 첨부">📎</button>
+            <input type="file" id="fileInputHome" hidden multiple />
+
+            <button class="btn" id="homeSend">보내기</button>
+          </div>
+          <div id="filePreviewHome" style="font-size: 13px; color: var(--sub); margin-top: 10px;"></div>
+        </div>
+      </section>
+
+      <section class="logs" id="logs" style="display:none; padding:16px;">
+        <h2>감사 로그</h2>
+        <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr style="background-color:#f6f8fb;">
+                <th style="padding:10px; text-align:left; border-bottom:1px solid #e6eaf2;">시간</th>
+                <th style="padding:10px; text-align:left; border-bottom:1px solid #e6eaf2;">입력 프롬프트</th>
+                <th style="padding:10px; text-align:left; border-bottom:1px solid #e6eaf2;">탐지 내역</th>
+                <th style="padding:10px; text-align:left; border-bottom:1px solid #e6eaf2;">LLM 응답</th>
+                <th style="padding:10px; text-align:left; border-bottom:1px solid #e6eaf2;">액션</th>
+              </tr>
+            </thead>
+            <tbody id="logTableBody">
+              </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="chat" id="chat">
+        <div class="history" id="history" aria-live="polite"></div>
+        <div class="composer">
+          <div class="composer-inner">
+            <textarea id="input" placeholder="메시지를 입력하세요… (Enter: 전송, Shift+Enter: 줄바꿈)" spellcheck="false"></textarea>
+            
+            <button class="btn" id="fileBtn" title="파일 첨부">📎</button>
+            <input type="file" id="fileInput" hidden multiple />
+            <button class="btn" id="sendBtn">보내기</button>
+          </div>
+
+          <div id="filePreview" style="font-size: 13px; color: var(--sub); margin-top: 5px; text-align: center;"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <template id="msgTpl">
+    <div class="msg">
+      <div class="bubble">
+        <div class="role" data-role-label></div>
+        <div class="content"></div>
+      </div>
+    </div>
+  </template>
+
+  <script>
+// === Config ===
+const API_BASE = "";
+const ENDPOINT = { chat: `${API_BASE}/chat`, health: `${API_BASE}/health`, logs: `${API_BASE}/api/admin/logs` }; // 로그 엔드포인트 수정
+
+// === Elements ===
+const el = (s) => document.querySelector(s);
+const historyEl = el('#history');
+const input = el('#input');
+const sendBtn = el('#sendBtn');
+const modelSel = el('#model');
+const clearBtn = el('#clearBtn');
+const exportBtn = el('#exportBtn');
+const healthDot = el('#healthDot');
+const recentList = el('#recentList');
+const home = el('#home');
+const chat = el('#chat');
+const homeInput = el('#homeInput');
+const homeSend = el('#homeSend');
+const newChatBtn = el('#newChatBtn');
+const greet = el('#greet');
+const namePreview = el('#namePreview');
+const editNameBtn = el('#editNameBtn');
+const logsEl = el('#logs');
+const logsTableBody = el('#logTableBody');
+const logsBtn = el('#logsBtn');
+const policiesBtn = el('#policiesBtn'); // policiesBtn 추가
+const fileBtnHome = el('#fileBtnHome');
+const fileInputHome = el('#fileInputHome');
+const filePreviewHome = el('#filePreviewHome');
+
+// File Upload Elements
+const fileBtn = el('#fileBtn');
+const fileInput = el('#fileInput');
+const filePreview = el('#filePreview');
+const dropZone = el('body'); // 드롭 영역 (body 전체)
+
+// === State === (selectedFile 통합, 한 번만 선언)
+const state = { messages: [], sending: false, recents: [], selectedFile: null };
+
+// === Helper Functions ===
+
+// 파일 상태 초기화
+function clearFileSelection(previewElementId = null) {
+  state.selectedFile = null; // 공통 상태 초기화
+  // 모든 미리보기 영역 초기화
+  filePreview.textContent = ''; 
+  filePreviewHome.textContent = ''; 
+  // 모든 파일 입력 초기화
+  fileInput.value = ''; 
+  fileInputHome.value = ''; 
+}
+
+// 파일 선택 처리
+function handleFileSelect(file, previewElementId) { // previewElementId 인자 추가
+  const previewElement = el(`#${previewElementId}`); // 해당 ID의 요소 선택
+  if (!previewElement) return; // 요소 없으면 종료
+
+  if (!file) { // 파일 선택 취소 시
+      clearFileSelection(previewElementId); // 해당 미리보기 영역 초기화
+      return;
+  }
+  // 파일 크기 제한 (예: 10MB)
+  if (file.size > 10 * 1024 * 1024) {
+    alert('파일 크기는 10MB를 초과할 수 없습니다.');
+    clearFileSelection(previewElementId); // 오류 시 초기화
+    return;
+  }
+  state.selectedFile = file; // 공통 상태 변수에 파일 저장
+  previewElement.textContent = `첨부됨: ${file.name}`; // 해당 영역에 파일 이름 표시
+}
+
+// View 전환
+function toView(viewName, text = '', fileToProcess = null) { 
+  home.style.display = 'none';
+  chat.style.display = 'none';
+  logsEl.style.display = 'none';
+
+  if (viewName === 'home') {
+    home.style.display = 'grid';
+    // 홈으로 올 때 파일 상태 초기화
+    clearFileSelection(); 
+  } else if (viewName === 'chat') {
+    chat.style.display = 'grid';
+    // 홈에서 채팅 시작 시 (text나 fileToProcess가 있을 경우)
+    if (text || fileToProcess) { 
+      let userMsg = text || `📄 ${fileToProcess.name} 전송`;
+      pushUser(userMsg); // 사용자 메시지 표시
+      // reply 함수 호출 시 파일 객체 전달
+      reply(userMsg, fileToProcess); 
+      // 중요: reply 호출 후 state.selectedFile 초기화 (reply 함수 내에서 처리할 수도 있음)
+      // clearFileSelection(); // reply 함수 내부에서 초기화하므로 여기서 호출 안 함
+    } else {
+      render(); // 기존 대화 불러오기 (파일 없음)
+    }
+    // 채팅 화면 진입 시 최근 목록 업데이트 (파일과 무관)
+    addRecentPreview(); 
+  } else if (viewName === 'logs') {
+    logsEl.style.display = 'block';
+    fetchAndRenderLogs();
+  }
+}
+
+// 로그 렌더링
+async function fetchAndRenderLogs() {
+  logsTableBody.innerHTML = '<tr><td colspan="5">로그 로딩 중...</td></tr>'; // 로딩 표시 추가
+  try {
+    const res = await fetch(ENDPOINT.logs, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`로그를 불러오는 데 실패했습니다. (${res.status})`);
+    const logs = await res.json();
+
+    if (logs.length === 0) {
+        logsTableBody.innerHTML = '<tr><td colspan="5">표시할 로그가 없습니다.</td></tr>';
+        return;
+    }
+
+    logsTableBody.innerHTML = ''; // 이전 내용 지우기
+    logs.forEach(log => {
+      const row = document.createElement('tr');
+      // ts를 Date 객체로 파싱 (ISO 문자열 Z 포함)
+      const timestamp = new Date(log.ts).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'medium'});
+      // detections_in이 pii 필드로 오므로 수정
+      const detections = (log.pii || []).join(', ') || '없음'; 
+      // action 필드를 직접 사용
+      const actionDisplay = log.action === 'block' ? '차단' : (log.action === 'mask' ? '마스킹' : '통과'); 
+
+      row.innerHTML = `
+        <td style="padding:10px; border-bottom:1px solid #e6eaf2;">${timestamp}</td>
+        <td style="padding:10px; border-bottom:1px solid #e6eaf2; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(log.user_prompt || '')}">${escapeHtml(log.user_prompt || '').substring(0, 50)}${(log.user_prompt || '').length > 50 ? '...' : ''}</td>
+        <td style="padding:10px; border-bottom:1px solid #e6eaf2;">${escapeHtml(detections)}</td>
+        <td style="padding:10px; border-bottom:1px solid #e6eaf2; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(log.llm_response || '')}">${escapeHtml(log.llm_response || '').substring(0, 50)}${(log.llm_response || '').length > 50 ? '...' : ''}</td>
+        <td style="padding:10px; border-bottom:1px solid #e6eaf2;">${actionDisplay}</td>
+      `;
+      logsTableBody.appendChild(row);
+    });
+  } catch (err) {
+    logsTableBody.innerHTML = `<tr><td colspan="5" style="padding:10px; color:#ef4444;">오류: ${err.message}</td></tr>`;
+  }
+}
+
+
+// 이름 로드/저장/업데이트
+function loadName() { return localStorage.getItem('displayName') || ''; }
+function saveName(n) { if (n) localStorage.setItem('displayName', n); else localStorage.removeItem('displayName'); }
+function updateGreeting() {
+  const hello = '안녕하세요';
+  const name = loadName();
+  greet.textContent = name ? `${hello}, ${name}` : `${hello}.`;
+  namePreview.textContent = name ? name : '비개인화';
+}
+
+// 렌더링 관련 함수들
+function render() {
+  historyEl.innerHTML = '';
+  state.messages.forEach((m) => historyEl.appendChild(messageNode(m)));
+  // 새 메시지 추가 후 스크롤 맨 아래로 이동
+  requestAnimationFrame(() => {
+     historyEl.scrollTop = historyEl.scrollHeight;
+  });
+  renderRecents(); // 최근 목록도 업데이트
+}
+
+function renderRecents() {
+  recentList.innerHTML = '';
+  state.recents.forEach((r, i) => {
+    const a = document.createElement('a');
+    a.href = '#';
+    a.className = 'item';
+    // 제목이 너무 길면 자르기
+    a.textContent = (r.title || `대화 ${i + 1}`).substring(0, 20) + ((r.title || '').length > 20 ? '...' : '');
+    a.title = r.title || `대화 ${i + 1}`; // 전체 제목은 툴팁으로
+    a.onclick = (e) => {
+      e.preventDefault();
+      // 대화 복원 시 파일 상태 초기화
+      clearFileSelection();
+      state.messages = JSON.parse(r.snapshot);
+      toView('chat'); // 이전 대화 내용만 불러오도록 수정
+    };
+    recentList.appendChild(a);
+  });
+}
+
+function messageNode(m) {
+  const tpl = el('#msgTpl');
+  const node = tpl.content.firstElementChild.cloneNode(true);
+  const label = node.querySelector('[data-role-label]');
+  const content = node.querySelector('.content');
+  const bubble = node.querySelector('.bubble');
+
+  node.classList.add(m.role === 'user' ? 'user' : 'assistant');
+  label.textContent = m.role === 'user' ? (loadName() || '사용자') : '어시스턴트'; // 이름 표시
+  content.innerHTML = renderMarkdownSafe(m.content);
+
+  if (m.notice) {
+    const noticeEl = document.createElement('div');
+    noticeEl.className = 'security-notice';
+    noticeEl.textContent = m.notice;
+    bubble.appendChild(noticeEl);
+  }
+  return node;
+}
+
+function renderMarkdownSafe(t) { if (!t) return ''; return escapeHtml(t).replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\n/g, '<br/>'); }
+function escapeHtml(s) { if(!s) return ''; return s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+// === Chat Logic ===
+function pushUser(content) {
+  // 빈 메시지 추가 방지
+  if (!content || !content.trim()) return;
+  state.messages.push({ role: 'user', content: content.trim() });
+  input.value = ''; // 입력창 비우기
+  render();
+}
+
+async function send() {
+  const content = input.value.trim();
+  const file = state.selectedFile;
+  // 텍스트도 없고 파일도 없거나, 전송 중이면 무시
+  if ((!content && !file) || state.sending) return;
+
+  let messageToSend = content;
+  // 파일만 보낼 경우, 파일 이름으로 사용자 메시지 표시
+  if (!content && file) {
+      messageToSend = `📄 ${file.name} 전송`;
+  }
+  
+  // 메시지 배열에 추가하고 화면 렌더링
+  if (messageToSend) {
+      pushUser(messageToSend);
+  }
+  
+  const fileToSend = file; // reply 함수에 전달할 파일 저장
+  clearFileSelection(); // 파일 상태 초기화 (중요)
+
+  // 비동기 응답 처리 시작
+  reply(messageToSend, fileToSend); 
+}
+
+
+async function reply(userMessage, attachedFile) { // file 인자 사용
+  state.sending = true;
+  sendBtn.disabled = true;
+  sendBtn.textContent = '전송 중…';
+  const model = modelSel.value;
+
+  const formData = new FormData();
+  formData.append('model', model);
+  // 'messages'는 마지막 사용자 메시지를 제외하고 보냄 (서버에서 추가할 것이므로)
+  const messagesForApi = state.messages.slice(0, -1);
+  formData.append('messages', JSON.stringify(messagesForApi));
+  // 실제 사용자 입력 원문 (파일 이름 표시 메시지 말고)
+  formData.append('user_prompt_text', userMessage); 
+
+  if (attachedFile) {
+    formData.append('file', attachedFile);
+  }
+
+  try {
+    const res = await fetch(ENDPOINT.chat, {
+      method: 'POST',
+      body: formData
+    });
+    // 응답 상태와 관계없이 일단 JSON 파싱 시도
+    const data = await res.json();
+
+    let assistantMessage;
+    if (!res.ok) {
+      // 서버가 에러 메시지(data.error, data.detail)를 보낸 경우
+      const errorTitle = data.error || "요청 처리 중 오류가 발생했습니다.";
+      const errorDetail = data.detail || `서버 응답 코드: ${res.status}`;
+      assistantMessage = {
+        role: 'assistant',
+        content: `**${errorTitle}**\n\n${errorDetail}`
+      };
+    } else {
+      // 성공 시
+      assistantMessage = {
+        role: 'assistant',
+        content: data.content || "(응답 없음)",
+        notice: data.notice || null
+      };
+    }
+    state.messages.push(assistantMessage);
+
+  } catch (err) {
+    // 네트워크 오류 또는 JSON 파싱 실패
+    state.messages.push({ role: 'assistant', content: `요청 오류: \`${err.message}\`` });
+  } finally {
+    state.sending = false;
+    sendBtn.disabled = false;
+    sendBtn.textContent = '보내기';
+    render(); // 최종 결과 렌더링
+    // 응답 후 최근 대화 목록 업데이트
+    addRecentPreview(); 
+  }
+}
+
+
+// Health Check
+async function health() { try { const r = await fetch(ENDPOINT.health, { cache: 'no-store' }); const ok = r.ok && (await r.json()).ok !== false; healthDot.classList.toggle('ok', ok); healthDot.classList.toggle('err', !ok); } catch { healthDot.classList.remove('ok'); healthDot.classList.add('err'); } }
+
+// Recents (in-memory)
+function addRecentPreview() {
+  // 메시지가 없으면 추가하지 않음
+  if (state.messages.length === 0) return;
+  
+  // 첫 사용자 메시지 찾기 (없으면 추가 안 함)
+  const firstUserMessage = state.messages.find(m => m.role === 'user');
+  if (!firstUserMessage) return;
+
+  const newRecent = {
+    // 제목은 첫 사용자 메시지로, 너무 길면 자름
+    title: firstUserMessage.content.substring(0, 24) + (firstUserMessage.content.length > 24 ? '...' : ''),
+    ts: Date.now(),
+    // 현재 대화 상태 전체를 문자열로 저장
+    snapshot: JSON.stringify(state.messages) 
+  };
+
+  // 기존 recents 배열에서 동일한 스냅샷을 가진 항목 제거 (중복 방지)
+  state.recents = state.recents.filter(r => r.snapshot !== newRecent.snapshot);
+
+  // 맨 앞에 새 항목 추가
+  state.recents.unshift(newRecent);
+  // 최대 15개만 유지
+  state.recents = state.recents.slice(0, 15);
+  // 화면 다시 그리기
+  renderRecents();
+}
+
+
+// Export / Clear
+function exportChat() { const blob = new Blob([JSON.stringify({ model: modelSel.value, messages: state.messages }, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `chat_${new Date().toISOString().replace(/[:.]/g, '-')}.json`; a.click(); URL.revokeObjectURL(url); }
+
+// RBAC UI Control
+function checkAdminRole(role) {
+  // 역할이 'admin'일 경우에만 버튼을 보이게 함
+  const isAdmin = role === 'admin';
+  policiesBtn.style.display = isAdmin ? 'flex' : 'none'; // display: block 대신 flex
+  logsBtn.style.display = isAdmin ? 'flex' : 'none';
+}
+
+// === Event Listeners ===
+// 파일 선택 버튼
+fileBtnHome.addEventListener('click', () => fileInputHome.click());
+fileInputHome.addEventListener('change', (e) => {
+  if (e.target.files.length > 0) {
+    // 홈 미리보기 ID('filePreviewHome') 전달
+    handleFileSelect(e.target.files[0], 'filePreviewHome'); 
+  }
+  // fileInputHome.value = ''; // 여기서 초기화하면 안 됨
+});
+
+// 드래그 앤 드롭
+dropZone.addEventListener('dragenter', (e) => { e.preventDefault(); e.stopPropagation(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); if (e.relatedTarget && dropZone.contains(e.relatedTarget)) return; dropZone.classList.remove('dragover'); });
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  dropZone.classList.remove('dragover'); 
+  if (e.dataTransfer.files.length > 0) {
+    // 현재 보이는 화면에 따라 다른 미리보기 ID 전달
+    const currentView = home.style.display !== 'none' ? 'home' : 'chat';
+    const previewId = currentView === 'home' ? 'filePreviewHome' : 'filePreview';
+    handleFileSelect(e.dataTransfer.files[0], previewId); 
+  }
+});
+
+// 채팅 입력 및 전송
+input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); } }); // isComposing 추가 (한글 입력 문제 해결)
+sendBtn.addEventListener('click', send);
+
+// 기타 버튼들
+clearBtn.addEventListener('click', () => { state.messages = []; clearFileSelection(); render(); toView('home'); }); // 홈으로 이동 추가
+exportBtn.addEventListener('click', exportChat);
+homeInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.isComposing) {
+    e.preventDefault();
+    const text = homeInput.value.trim();
+    const file = state.selectedFile;
+    if (text || file){
+        toView('chat', text, file);
+    }
+  }
+});
+homeSend.addEventListener('click', () => {
+  const text = homeInput.value.trim();
+  const file = state.selectedFile; // 현재 선택된 파일 가져오기
+  // 텍스트나 파일 둘 중 하나라도 있으면 채팅 화면으로 이동
+  if (text || file) {
+      // toView 함수에 텍스트와 파일 객체 전달
+      toView('chat', text, file); 
+  }
+});
+newChatBtn.onclick = () => { state.messages = []; clearFileSelection(); toView('home'); }; // 새 채팅 시 메시지 및 파일 초기화
+logsBtn.onclick = () => toView('logs');
+editNameBtn.onclick = () => {
+  const cur = loadName();
+  const next = prompt('표시할 이름을 입력하세요 (비워두면 이름 표시 안 함)', cur);
+  if (next === null) return;
+  const trimmed = (next || '').trim();
+  saveName(trimmed);
+  updateGreeting();
+  render(); // 이름 변경 후 메시지 렌더링 다시 (사용자 이름 업데이트)
+};
+
+// === Initialization ===
+function init() {
+  // 역할 확인 및 UI 업데이트
+  const userRole = localStorage.getItem('userRole');
+  checkAdminRole(userRole);
+  updateGreeting();
+  
+  // 초기 화면 로드 및 상태 확인
+  toView('home');
+  health();
+  setInterval(health, 5000); // 5초마다 상태 확인
+
+  // 최근 대화 목록 로드 (예시: localStorage 사용 - 실제 구현 시 백엔드 연동 고려)
+  // state.recents = JSON.parse(localStorage.getItem('chatRecents') || '[]');
+  renderRecents();
+}
+
+init(); // 앱 시작
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+  </script>
+</body>
+</html>
