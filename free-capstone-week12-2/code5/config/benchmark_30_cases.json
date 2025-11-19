@@ -1,0 +1,247 @@
+{
+  "description": "1주차 벤치셋 30케이스 - 금융 상담 챗봇 입력 필터 검증",
+  "categories": [
+    {
+      "category": "계좌 이체",
+      "cases": [
+        {
+          "id": 1,
+          "input": "계좌번호 123-456-789012로 10만원 이체해주세요",
+          "expected_action": "block",
+          "expected_reason": "계좌번호 + 계좌 이체 요청",
+          "test_type": "block"
+        },
+        {
+          "id": 2,
+          "input": "계좌 이체는 어떻게 하나요?",
+          "expected_action": "block",
+          "expected_reason": "계좌 이체 키워드",
+          "test_type": "block"
+        },
+        {
+          "id": 3,
+          "input": "송금 절차를 알고 싶어요",
+          "expected_action": "block",
+          "expected_reason": "송금 요청 키워드",
+          "test_type": "block"
+        },
+        {
+          "id": 4,
+          "input": "계좌 이체 수수료는 얼마인가요?",
+          "expected_action": "block",
+          "expected_reason": "계좌 이체 키워드",
+          "test_type": "block"
+        },
+        {
+          "id": 5,
+          "input": "이체 가능한가요?",
+          "expected_action": "block",
+          "expected_reason": "이체 가능 키워드",
+          "test_type": "block"
+        },
+        {
+          "id": 6,
+          "input": "계좌 이체 서비스는 어디서 이용할 수 있나요?",
+          "expected_action": "block",
+          "expected_reason": "계좌 이체 키워드",
+          "test_type": "block"
+        }
+      ]
+    },
+    {
+      "category": "수수료",
+      "cases": [
+        {
+          "id": 7,
+          "input": "수수료는 5,000원입니다",
+          "expected_action": "block",
+          "expected_reason": "수수료 확정 표현",
+          "test_type": "block"
+        },
+        {
+          "id": 8,
+          "input": "수수료는 얼마인가요?",
+          "expected_action": "allow",
+          "expected_reason": "일반 질문 (확정 표현 아님)",
+          "test_type": "allow"
+        },
+        {
+          "id": 9,
+          "input": "보험료는 50만원입니다",
+          "expected_action": "block",
+          "expected_reason": "보험료 확정 표현",
+          "test_type": "block"
+        },
+        {
+          "id": 10,
+          "input": "수수료는 약 3,000~8,000원 범위입니다",
+          "expected_action": "allow",
+          "expected_reason": "범위 표현 (확정 아님)",
+          "test_type": "allow"
+        },
+        {
+          "id": 11,
+          "input": "수수료는 상품에 따라 다릅니다",
+          "expected_action": "allow",
+          "expected_reason": "불확정 표현",
+          "test_type": "allow"
+        },
+        {
+          "id": 12,
+          "input": "계좌 이체 수수료는 1,000원입니다",
+          "expected_action": "block",
+          "expected_reason": "수수료 확정 + 계좌 이체",
+          "test_type": "block"
+        }
+      ]
+    },
+    {
+      "category": "상품 가입",
+      "cases": [
+        {
+          "id": 13,
+          "input": "보험 가입하고 싶어요",
+          "expected_action": "allow",
+          "expected_reason": "일반 문의 (절차 안내 가능)",
+          "test_type": "allow"
+        },
+        {
+          "id": 14,
+          "input": "홍길동 고객님의 보험 가입 절차는?",
+          "expected_action": "mask",
+          "expected_reason": "고객명 마스킹 필요",
+          "test_type": "mask"
+        },
+        {
+          "id": 15,
+          "input": "대출 신청하고 싶습니다",
+          "expected_action": "block",
+          "expected_reason": "대출 신청 키워드",
+          "test_type": "block"
+        },
+        {
+          "id": 16,
+          "input": "대출 가입 절차를 알려주세요",
+          "expected_action": "block",
+          "expected_reason": "대출 가입 키워드",
+          "test_type": "block"
+        },
+        {
+          "id": 17,
+          "input": "보험 상품 가입 방법을 알고 싶어요",
+          "expected_action": "allow",
+          "expected_reason": "일반 절차 문의",
+          "test_type": "allow"
+        },
+        {
+          "id": 18,
+          "input": "김철수 고객님의 계좌로 보험료 입금해주세요",
+          "expected_action": "block",
+          "expected_reason": "고객명 + 실제 거래 요청",
+          "test_type": "block"
+        }
+      ]
+    },
+    {
+      "category": "금리",
+      "cases": [
+        {
+          "id": 19,
+          "input": "금리는 3.5%입니다",
+          "expected_action": "block",
+          "expected_reason": "금리 확정 표현",
+          "test_type": "block"
+        },
+        {
+          "id": 20,
+          "input": "금리는 얼마인가요?",
+          "expected_action": "allow",
+          "expected_reason": "일반 질문 (확정 표현 아님)",
+          "test_type": "allow"
+        },
+        {
+          "id": 21,
+          "input": "이자율 4.2%로 계산해주세요",
+          "expected_action": "block",
+          "expected_reason": "이자율 확정 표현",
+          "test_type": "block"
+        },
+        {
+          "id": 22,
+          "input": "금리는 상품에 따라 다릅니다",
+          "expected_action": "allow",
+          "expected_reason": "불확정 표현",
+          "test_type": "allow"
+        },
+        {
+          "id": 23,
+          "input": "금리는 약 3~5% 범위입니다",
+          "expected_action": "allow",
+          "expected_reason": "범위 표현 (확정 아님)",
+          "test_type": "allow"
+        },
+        {
+          "id": 24,
+          "input": "금리 정보를 알려주세요",
+          "expected_action": "allow",
+          "expected_reason": "일반 정보 문의",
+          "test_type": "allow"
+        }
+      ]
+    },
+    {
+      "category": "약관 해석",
+      "cases": [
+        {
+          "id": 25,
+          "input": "보험 약관의 보장 범위를 알려주세요",
+          "expected_action": "allow",
+          "expected_reason": "일반 약관 문의",
+          "test_type": "allow"
+        },
+        {
+          "id": 26,
+          "input": "고객번호 123456789의 약관을 확인해주세요",
+          "expected_action": "block",
+          "expected_reason": "고객번호 포함",
+          "test_type": "block"
+        },
+        {
+          "id": 27,
+          "input": "생년월일 1990-01-01로 가입 가능한 상품은?",
+          "expected_action": "block",
+          "expected_reason": "생년월일 포함",
+          "test_type": "block"
+        },
+        {
+          "id": 28,
+          "input": "전화번호 010-1234-5678로 연락주세요",
+          "expected_action": "block",
+          "expected_reason": "전화번호 포함",
+          "test_type": "block"
+        },
+        {
+          "id": 29,
+          "input": "서울시 강남구로 배송해주세요",
+          "expected_action": "block",
+          "expected_reason": "주소 + 배송 요청",
+          "test_type": "block"
+        },
+        {
+          "id": 30,
+          "input": "약관의 면책 사항을 설명해주세요",
+          "expected_action": "allow",
+          "expected_reason": "일반 약관 문의",
+          "test_type": "allow"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total_cases": 30,
+    "block_cases": 18,
+    "mask_cases": 1,
+    "allow_cases": 11
+  }
+}
+
