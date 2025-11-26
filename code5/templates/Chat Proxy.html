@@ -104,6 +104,99 @@
       color: var(--sub);
       opacity: 0.8;
     }
+
+    /* 응답 포맷 스타일 개선 */
+    .content h2 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 18px 0 10px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #e6eaf2;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .content h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #475467;
+      margin: 14px 0 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .content ul, .content ol {
+      margin: 8px 0;
+      padding-left: 24px;
+      line-height: 1.7;
+    }
+
+    .content li {
+      margin: 6px 0;
+      color: var(--text);
+    }
+
+    .content li::marker {
+      color: var(--blue);
+      font-weight: 600;
+    }
+
+    .content strong {
+      color: var(--text);
+      font-weight: 600;
+      background: linear-gradient(180deg, transparent 60%, rgba(37,99,235,.12) 60%);
+      padding: 0 2px;
+    }
+
+    .content code {
+      background: #f6f8fb;
+      color: #e11d48;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      border: 1px solid #e6eaf2;
+    }
+
+    .content pre {
+      background: #f6f8fb;
+      border: 1px solid var(--ring);
+      border-radius: 8px;
+      padding: 12px;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+
+    .content pre code {
+      background: transparent;
+      border: none;
+      padding: 0;
+      color: var(--text);
+    }
+
+    .content p {
+      margin: 8px 0;
+      line-height: 1.7;
+    }
+
+    .content br {
+      display: block;
+      content: '';
+      margin: 4px 0;
+    }
+
+    /* 섹션 구분 강화 */
+    .content > div {
+      margin: 12px 0;
+    }
+
+    .assistant .bubble {
+      background: linear-gradient(180deg, #ffffff, #fafbfc);
+      border-color: #e0e7f0;
+    }
 </style>
 </head>
 <body class="drop-zone">
@@ -111,9 +204,6 @@
     <aside class="sidebar">
       <div class="brand"><div class="logo"></div><h1>Chat Proxy</h1></div>
       <button class="sb-btn primary" id="newChatBtn">＋ 새 채팅</button>
-      <div class="group-title">도구</div>
-      <button class="sb-btn" id="policiesBtn">정책 관리(준비중)</button>
-      <button class="sb-btn" id="logsBtn">감사 로그(준비중)</button>
       <div class="group-title">최근</div>
       <div class="recent" id="recentList"></div>
     </aside>
@@ -123,15 +213,47 @@
         <span class="pill"><span class="status" id="healthDot"></span> 프록시 상태</span>
         <div class="grow"></div>
         <select id="model" class="select" aria-label="모델 선택">
-          <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (RAG)</option>
-          <option value="gemini-1.5-pro">Gemini 1.5 Pro (RAG)</option>
-          <option value="ollama:qwen3:8b" selected>Ollama - qwen3:8b</option>
-          <option value="ollama:llama3.1:8b">Ollama - llama3.1:8b</option>
-          <option value="ollama:mistral:7b">Ollama - mistral:7b</option>
-          <option value="demo-local">DEMO (로컬 에코)</option>
+          <!-- Gemini 2.x 시리즈 -->
+          <optgroup label="🔥 Gemini 2.x (최신)">
+            <option value="gemini-2.0-flash" selected>Gemini 2.0 Flash (RPM: 2K)</option>
+            <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite (RPM: 4K)</option>
+            <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash Exp (RPM: 10)</option>
+          </optgroup>
+          
+          <!-- Gemini 2.5 시리즈 -->
+          <optgroup label="⚡ Gemini 2.5">
+            <option value="gemini-2.5-flash">Gemini 2.5 Flash (RPM: 1K)</option>
+            <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite (RPM: 4K)</option>
+            <option value="gemini-2.5-pro">Gemini 2.5 Pro (RPM: 150)</option>
+            <option value="gemini-2.5-pro-exp">Gemini 2.5 Pro Exp (RPM: 150)</option>
+          </optgroup>
+          
+          <!-- Gemini 3 시리즈 -->
+          <optgroup label="🚀 Gemini 3">
+            <option value="gemini-3-pro">Gemini 3 Pro (RPM: 25)</option>
+          </optgroup>
+          
+          <!-- Gemma 시리즈 -->
+          <optgroup label="🤖 Gemma (경량)">
+            <option value="gemma-3-27b">Gemma 3 27B (RPM: 30)</option>
+            <option value="gemma-3-12b">Gemma 3 12B (RPM: 30)</option>
+            <option value="gemma-3-4b">Gemma 3 4B (RPM: 30)</option>
+            <option value="gemma-3-2b">Gemma 3 2B (RPM: 30)</option>
+            <option value="gemma-3-1b">Gemma 3 1B (RPM: 30)</option>
+          </optgroup>
+          
+          <!-- Ollama 로컬 모델 -->
+          <optgroup label="💻 Ollama (로컬)">
+            <option value="ollama:qwen3:8b">Ollama - qwen3:8b</option>
+            <option value="ollama:llama3.1:8b">Ollama - llama3.1:8b</option>
+            <option value="ollama:mistral:7b">Ollama - mistral:7b</option>
+          </optgroup>
+          
+          <!-- 기타 -->
+          <optgroup label="🔧 기타">
+            <option value="demo-local">DEMO (로컬 에코)</option>
+          </optgroup>
         </select>
-        <button class="btn" id="exportBtn">내보내기</button>
-        <button class="btn" id="clearBtn">초기화</button>
       </div>
 
       <section class="home" id="home">
@@ -144,12 +266,13 @@
           <div class="search">
             <input id="homeInput" placeholder="질문을 입력하세요…" />
             
-            <button class="btn" id="fileBtnHome" title="파일 첨부">📎</button>
-            <input type="file" id="fileInputHome" hidden multiple />
+            <!-- 파일 첨부 기능 제거 -->
+            <!-- <button class="btn" id="fileBtnHome" title="파일 첨부 (.txt, .pdf)">📎</button>
+            <input type="file" id="fileInputHome" accept=".txt,.pdf" hidden /> -->
 
             <button class="btn" id="homeSend">보내기</button>
           </div>
-          <div id="filePreviewHome" style="font-size: 13px; color: var(--sub); margin-top: 10px;"></div>
+          <!-- <div id="filePreviewHome" style="font-size: 13px; color: var(--sub); margin-top: 10px;"></div> -->
         </div>
       </section>
 
@@ -178,12 +301,13 @@
           <div class="composer-inner">
             <textarea id="input" placeholder="메시지를 입력하세요… (Enter: 전송, Shift+Enter: 줄바꿈)" spellcheck="false"></textarea>
             
-            <button class="btn" id="fileBtn" title="파일 첨부">📎</button>
-            <input type="file" id="fileInput" hidden multiple />
+            <!-- 파일 첨부 기능 제거 -->
+            <!-- <button class="btn" id="fileBtn" title="파일 첨부 (.txt, .pdf)">📎</button>
+            <input type="file" id="fileInput" accept=".txt,.pdf" hidden /> -->
             <button class="btn" id="sendBtn">보내기</button>
           </div>
 
-          <div id="filePreview" style="font-size: 13px; color: var(--sub); margin-top: 5px; text-align: center;"></div>
+          <!-- <div id="filePreview" style="font-size: 13px; color: var(--sub); margin-top: 5px; text-align: center;"></div> -->
         </div>
       </section>
     </main>
@@ -209,8 +333,6 @@ const historyEl = el('#history');
 const input = el('#input');
 const sendBtn = el('#sendBtn');
 const modelSel = el('#model');
-const clearBtn = el('#clearBtn');
-const exportBtn = el('#exportBtn');
 const healthDot = el('#healthDot');
 const recentList = el('#recentList');
 const home = el('#home');
@@ -225,14 +347,13 @@ const logsEl = el('#logs');
 const logsTableBody = el('#logTableBody');
 const logsBtn = el('#logsBtn');
 const policiesBtn = el('#policiesBtn'); // policiesBtn 추가
-const fileBtnHome = el('#fileBtnHome');
-const fileInputHome = el('#fileInputHome');
-const filePreviewHome = el('#filePreviewHome');
-
-// File Upload Elements
-const fileBtn = el('#fileBtn');
-const fileInput = el('#fileInput');
-const filePreview = el('#filePreview');
+// 파일 첨부 기능 제거로 인해 주석 처리
+// const fileBtnHome = el('#fileBtnHome');
+// const fileInputHome = el('#fileInputHome');
+// const filePreviewHome = el('#filePreviewHome');
+// const fileBtn = el('#fileBtn');
+// const fileInput = el('#fileInput');
+// const filePreview = el('#filePreview');
 const dropZone = el('body'); // 드롭 영역 (body 전체)
 
 // === State === (selectedFile 통합, 한 번만 선언)
@@ -240,35 +361,13 @@ const state = { messages: [], sending: false, recents: [], selectedFile: null };
 
 // === Helper Functions ===
 
-// 파일 상태 초기화
+// 파일 상태 초기화 (파일 첨부 기능 제거로 간소화)
 function clearFileSelection(previewElementId = null) {
   state.selectedFile = null; // 공통 상태 초기화
-  // 모든 미리보기 영역 초기화
-  filePreview.textContent = ''; 
-  filePreviewHome.textContent = ''; 
-  // 모든 파일 입력 초기화
-  fileInput.value = ''; 
-  fileInputHome.value = ''; 
 }
 
-// 파일 선택 처리
-function handleFileSelect(file, previewElementId) { // previewElementId 인자 추가
-  const previewElement = el(`#${previewElementId}`); // 해당 ID의 요소 선택
-  if (!previewElement) return; // 요소 없으면 종료
-
-  if (!file) { // 파일 선택 취소 시
-      clearFileSelection(previewElementId); // 해당 미리보기 영역 초기화
-      return;
-  }
-  // 파일 크기 제한 (예: 10MB)
-  if (file.size > 10 * 1024 * 1024) {
-    alert('파일 크기는 10MB를 초과할 수 없습니다.');
-    clearFileSelection(previewElementId); // 오류 시 초기화
-    return;
-  }
-  state.selectedFile = file; // 공통 상태 변수에 파일 저장
-  previewElement.textContent = `첨부됨: ${file.name}`; // 해당 영역에 파일 이름 표시
-}
+// 파일 선택 처리 (파일 첨부 기능 제거로 사용 안 함)
+// function handleFileSelect(file, previewElementId) { ... }
 
 // View 전환
 function toView(viewName, text = '', fileToProcess = null) { 
@@ -293,8 +392,8 @@ function toView(viewName, text = '', fileToProcess = null) {
     } else {
       render(); // 기존 대화 불러오기 (파일 없음)
     }
-    // 채팅 화면 진입 시 최근 목록 업데이트 (파일과 무관)
-    addRecentPreview(); 
+    // 채팅 화면 진입 시 최근 목록 업데이트는 reply 함수에서 처리하므로 여기서는 불필요
+    // addRecentPreview(); // 중복 호출 제거
   } else if (viewName === 'logs') {
     logsEl.style.display = 'block';
     fetchAndRenderLogs();
@@ -400,7 +499,55 @@ function messageNode(m) {
   return node;
 }
 
-function renderMarkdownSafe(t) { if (!t) return ''; return escapeHtml(t).replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\n/g, '<br/>'); }
+function renderMarkdownSafe(t) {
+  if (!t) return '';
+  let html = escapeHtml(t);
+  
+  // 코드 블록
+  html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+  
+  // 섹션 헤더 (## 법령, ## 근거 등)
+  html = html.replace(/^## (.+)$/gm, (match, title) => {
+    const icon = getIconForSection(title);
+    return `<h2>${icon} ${title}</h2>`;
+  });
+  
+  // 서브 헤더 (### 또는 - [제목])
+  html = html.replace(/^### (.+)$/gm, '<h3>▸ $1</h3>');
+  html = html.replace(/^- \[([^\]]+)\](.*)$/gm, '<h3>▸ $1</h3><p style="margin-left:20px">$2</p>');
+  
+  // 리스트 항목 (1. 2. 3. 형식)
+  html = html.replace(/^(\d+)\. (.+)$/gm, '<div style="margin:8px 0"><strong style="color:var(--blue)">$1.</strong> $2</div>');
+  
+  // 강조 (** **)
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  
+  // 인라인 코드
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  
+  // 줄바꿈
+  html = html.replace(/\n\n/g, '<br/><br/>');
+  html = html.replace(/\n/g, '<br/>');
+  
+  return html;
+}
+
+function getIconForSection(title) {
+  const icons = {
+    '법령': '⚖️',
+    '근거': '📋',
+    '근거 출처': '📋',
+    '로 키워드': '🔎',
+    '단계': '📝',
+    '더욱 단계': '📝',
+    '다음 단계': '📝',
+    '문의사항': '❓',
+    '체크리스트': '✅',
+    '주의사항': '⚠️'
+  };
+  return icons[title] || '📌';
+}
+
 function escapeHtml(s) { if(!s) return ''; return s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
 // === Chat Logic ===
@@ -413,10 +560,15 @@ function pushUser(content) {
 }
 
 async function send() {
+  console.log('[send] 함수 호출됨');
   const content = input.value.trim();
   const file = state.selectedFile;
+  console.log('[send] content:', content, 'file:', file, 'sending:', state.sending);
   // 텍스트도 없고 파일도 없거나, 전송 중이면 무시
-  if ((!content && !file) || state.sending) return;
+  if ((!content && !file) || state.sending) {
+    console.log('[send] 전송 취소됨 (내용 없음 또는 전송 중)');
+    return;
+  }
 
   let messageToSend = content;
   // 파일만 보낼 경우, 파일 이름으로 사용자 메시지 표시
@@ -474,9 +626,14 @@ async function reply(userMessage, attachedFile) { // file 인자 사용
       };
     } else {
       // 성공 시
+      let content = data.content || "(응답 없음)";
+      // 모델 정보가 있으면 응답 하단에 추가
+      if (data.model_used) {
+        content += `\n\n---\n*🤖 응답 모델: ${data.model_used}*`;
+      }
       assistantMessage = {
         role: 'assistant',
-        content: data.content || "(응답 없음)",
+        content: content,
         notice: data.notice || null
       };
     }
@@ -490,14 +647,36 @@ async function reply(userMessage, attachedFile) { // file 인자 사용
     sendBtn.disabled = false;
     sendBtn.textContent = '보내기';
     render(); // 최종 결과 렌더링
-    // 응답 후 최근 대화 목록 업데이트
+    // 응답 후 최근 대화 목록 업데이트 (대화가 완전히 끝난 후 1번만)
     addRecentPreview(); 
   }
 }
 
 
 // Health Check
-async function health() { try { const r = await fetch(ENDPOINT.health, { cache: 'no-store' }); const ok = r.ok && (await r.json()).ok !== false; healthDot.classList.toggle('ok', ok); healthDot.classList.toggle('err', !ok); } catch { healthDot.classList.remove('ok'); healthDot.classList.add('err'); } }
+async function health() { 
+  try { 
+    const r = await fetch(ENDPOINT.health, { 
+      cache: 'no-store',
+      method: 'GET'
+    }); 
+    if (r.ok) {
+      const data = await r.json();
+      const ok = data.ok === true;
+      healthDot.classList.toggle('ok', ok); 
+      healthDot.classList.toggle('err', !ok);
+      console.log('[Health Check] OK:', ok);
+    } else {
+      healthDot.classList.remove('ok'); 
+      healthDot.classList.add('err');
+      console.warn('[Health Check] Failed - Status:', r.status);
+    }
+  } catch (err) { 
+    healthDot.classList.remove('ok'); 
+    healthDot.classList.add('err');
+    console.error('[Health Check] Error:', err);
+  } 
+}
 
 // Recents (in-memory)
 function addRecentPreview() {
@@ -516,8 +695,8 @@ function addRecentPreview() {
     snapshot: JSON.stringify(state.messages) 
   };
 
-  // 기존 recents 배열에서 동일한 스냅샷을 가진 항목 제거 (중복 방지)
-  state.recents = state.recents.filter(r => r.snapshot !== newRecent.snapshot);
+  // 기존 recents 배열에서 같은 제목을 가진 최근 항목 제거 (중복 방지 - 제목 기준)
+  state.recents = state.recents.filter(r => r.title !== newRecent.title);
 
   // 맨 앞에 새 항목 추가
   state.recents.unshift(newRecent);
@@ -528,26 +707,22 @@ function addRecentPreview() {
 }
 
 
-// Export / Clear
-function exportChat() { const blob = new Blob([JSON.stringify({ model: modelSel.value, messages: state.messages }, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `chat_${new Date().toISOString().replace(/[:.]/g, '-')}.json`; a.click(); URL.revokeObjectURL(url); }
-
 // RBAC UI Control
 function checkAdminRole(role) {
   // 역할이 'admin'일 경우에만 버튼을 보이게 함
   const isAdmin = role === 'admin';
-  policiesBtn.style.display = isAdmin ? 'flex' : 'none'; // display: block 대신 flex
-  logsBtn.style.display = isAdmin ? 'flex' : 'none';
+  if (policiesBtn) policiesBtn.style.display = isAdmin ? 'flex' : 'none'; // display: block 대신 flex
+  if (logsBtn) logsBtn.style.display = isAdmin ? 'flex' : 'none';
 }
 
 // === Event Listeners ===
-// 파일 선택 버튼
+// 파일 첨부 기능 제거됨
+/*
 fileBtnHome.addEventListener('click', () => fileInputHome.click());
 fileInputHome.addEventListener('change', (e) => {
   if (e.target.files.length > 0) {
-    // 홈 미리보기 ID('filePreviewHome') 전달
     handleFileSelect(e.target.files[0], 'filePreviewHome'); 
   }
-  // fileInputHome.value = ''; // 여기서 초기화하면 안 됨
 });
 
 // 드래그 앤 드롭
@@ -559,20 +734,28 @@ dropZone.addEventListener('drop', (e) => {
   e.stopPropagation();
   dropZone.classList.remove('dragover'); 
   if (e.dataTransfer.files.length > 0) {
-    // 현재 보이는 화면에 따라 다른 미리보기 ID 전달
     const currentView = home.style.display !== 'none' ? 'home' : 'chat';
     const previewId = currentView === 'home' ? 'filePreviewHome' : 'filePreview';
     handleFileSelect(e.dataTransfer.files[0], previewId); 
   }
 });
+*/
 
 // 채팅 입력 및 전송
-input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); } }); // isComposing 추가 (한글 입력 문제 해결)
-sendBtn.addEventListener('click', send);
+input.addEventListener('keydown', (e) => { 
+  console.log('[keydown] key:', e.key, 'shiftKey:', e.shiftKey, 'isComposing:', e.isComposing);
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { 
+    e.preventDefault(); 
+    console.log('[keydown] Enter 키 감지 - send() 호출');
+    send(); 
+  } 
+}); // isComposing 추가 (한글 입력 문제 해결)
+sendBtn.addEventListener('click', () => {
+  console.log('[click] 보내기 버튼 클릭');
+  send();
+});
 
-// 기타 버튼들
-clearBtn.addEventListener('click', () => { state.messages = []; clearFileSelection(); render(); toView('home'); }); // 홈으로 이동 추가
-exportBtn.addEventListener('click', exportChat);
+// 홈 입력창 이벤트
 homeInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.isComposing) {
     e.preventDefault();
@@ -593,7 +776,7 @@ homeSend.addEventListener('click', () => {
   }
 });
 newChatBtn.onclick = () => { state.messages = []; clearFileSelection(); toView('home'); }; // 새 채팅 시 메시지 및 파일 초기화
-logsBtn.onclick = () => toView('logs');
+if (logsBtn) logsBtn.onclick = () => toView('logs');
 editNameBtn.onclick = () => {
   const cur = loadName();
   const next = prompt('표시할 이름을 입력하세요 (비워두면 이름 표시 안 함)', cur);

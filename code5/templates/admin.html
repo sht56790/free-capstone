@@ -79,6 +79,7 @@
                 <div class="nav-group-title">관리</div>
                 <a class="nav-link" data-view="users">👥 사용자 관리</a>
                 <a class="nav-link" data-view="rules">⚙️ 탐지 규칙 관리</a>
+                <a class="nav-link" data-view="documents">📄 문서 관리 (RAG)</a>
                 <a class="nav-link" data-view="status">🌐 시스템 상태</a>
             </nav>
             <footer>Chat Proxy Capstone. <br/><a onclick="localStorage.clear(); location.href='/';">로그아웃</a></footer>
@@ -89,9 +90,9 @@
             <div class="content-wrap">
                 <section id="dashboard-view">
                     <div class="stats-grid">
-                        <div class="stat-card"><div class="label">총 요청</div><div class="value" id="stat-today-requests">0</div></div>
-                        <div class="stat-card"><div class="label">탐지된 민감정보</div><div class="value" id="stat-pii-detected">0</div></div>
-                        <div class="stat-card"><div class="label">차단된 요청</div><div class="value" id="stat-blocked">0</div></div>
+                        <div class="stat-card"><div class="label">총 요청 (최근 7일)</div><div class="value" id="stat-today-requests">0</div></div>
+                        <div class="stat-card"><div class="label">탐지된 민감정보 (최근 7일)</div><div class="value" id="stat-pii-detected">0</div></div>
+                        <div class="stat-card"><div class="label">차단된 요청 (최근 7일)</div><div class="value" id="stat-blocked">0</div></div>
                         <div class="stat-card"><div class="label">활성 사용자</div><div class="value" id="stat-active-users">0</div></div>
                     </div>
                     <div class="chart-card card">
@@ -107,7 +108,107 @@
                 <section id="logs-view" style="display: none;"><div class="card"><table><thead><tr><th>시간</th><th>사용자</th><th>탐지 내역</th><th>처리</th><th>요청 내용</th></tr></thead><tbody id="log-table-body"></tbody></table></div></section>
                 <section id="users-view" style="display: none;"><div class="card"><button class="btn primary" id="add-user-btn" style="margin-bottom: 20px;">＋ 새 사용자 추가</button><table><thead><tr><th>사용자 ID (이메일)</th><th>역할</th><th>마지막 접속</th><th>관리</th></tr></thead><tbody id="user-table-body"></tbody></table></div></section>
                 <section id="rules-view" style="display: none;"><div class="card"><button class="btn primary" id="add-rule-btn" style="margin-bottom: 20px;">＋ 새 규칙 추가</button><table><thead><tr><th>규칙 이름</th><th>처리 방식</th><th>정규식 (Regex)</th><th>활성 상태</th><th>관리</th></tr></thead><tbody id="rule-table-body"></tbody></table></div></section>
-                <section id="status-view" style="display: none;"><div class="card"><p>시스템 상태 보기 페이지는 아직 구현되지 않았습니다.</p></div></section>
+                
+                <section id="documents-view" style="display: none;">
+                    <div class="card" style="margin-bottom: 20px;">
+                        <h3 style="margin-top: 0;">📄 RAG 문서 관리</h3>
+                        <p style="color: var(--sub); margin-bottom: 16px;">
+                            RAG 시스템에 사용할 PDF 문서를 관리합니다. 문서는 <code>scripts/rag_docs/</code> 폴더에 직접 추가하세요.
+                        </p>
+                        <div style="background: #fffbeb; border: 1px solid #fcd34d; border-radius: var(--radius-sm); padding: 16px; margin-bottom: 20px;">
+                            <strong>📁 문서 추가 방법:</strong>
+                            <ol style="margin: 8px 0 0 20px; padding: 0;">
+                                <li>서버의 <code>scripts/rag_docs/</code> 폴더에 PDF 파일을 복사</li>
+                                <li>아래 "⚡ RAG 재구축" 버튼을 클릭하여 벡터 DB 업데이트</li>
+                                <li>완료되면 챗봇이 새 문서를 활용하여 답변</li>
+                            </ol>
+                        </div>
+                        <button class="btn primary" id="rebuild-rag-btn" style="font-size: 16px; padding: 12px 24px;">⚡ RAG 재구축</button>
+                    </div>
+                    
+                    <div class="card">
+                        <h3 style="margin-top: 0;">현재 등록된 문서 목록</h3>
+                        <button class="btn" id="refresh-docs-btn" style="margin-bottom: 16px;">🔄 새로고침</button>
+                        <table>
+                            <thead>
+                                <tr><th>파일명</th><th>크기</th><th>수정 시간</th><th>관리</th></tr>
+                            </thead>
+                            <tbody id="documents-table-body">
+                                <tr><td colspan="4" style="text-align: center; color: var(--sub);">문서를 불러오는 중...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                
+                <section id="status-view" style="display: none;">
+                    <div class="card" style="margin-bottom: 20px;">
+                        <h3 style="margin-top: 0;">서버 정보</h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                            <div><strong>Python 버전:</strong> <span id="status-python">-</span></div>
+                            <div><strong>운영체제:</strong> <span id="status-os">-</span></div>
+                            <div><strong>플랫폼:</strong> <span id="status-platform">-</span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="card" style="margin-bottom: 20px;">
+                        <h3 style="margin-top: 0;">리소스 사용량</h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                            <div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                    <strong>CPU 사용률</strong>
+                                    <span id="status-cpu-percent">0%</span>
+                                </div>
+                                <div style="background: var(--muted); height: 20px; border-radius: 10px; overflow: hidden;">
+                                    <div id="status-cpu-bar" style="background: var(--blue); height: 100%; width: 0%; transition: width 0.5s;"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                    <strong>메모리 사용률</strong>
+                                    <span id="status-memory-percent">0%</span>
+                                </div>
+                                <div style="background: var(--muted); height: 20px; border-radius: 10px; overflow: hidden;">
+                                    <div id="status-memory-bar" style="background: var(--mint); height: 100%; width: 0%; transition: width 0.5s;"></div>
+                                </div>
+                                <div style="font-size: 12px; color: var(--sub); margin-top: 4px;">
+                                    <span id="status-memory-used">0</span> GB / <span id="status-memory-total">0</span> GB
+                                </div>
+                            </div>
+                            <div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                    <strong>디스크 사용률</strong>
+                                    <span id="status-disk-percent">0%</span>
+                                </div>
+                                <div style="background: var(--muted); height: 20px; border-radius: 10px; overflow: hidden;">
+                                    <div id="status-disk-bar" style="background: var(--warn); height: 100%; width: 0%; transition: width 0.5s;"></div>
+                                </div>
+                                <div style="font-size: 12px; color: var(--sub); margin-top: 4px;">
+                                    <span id="status-disk-used">0</span> GB / <span id="status-disk-total">0</span> GB
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card" style="margin-bottom: 20px;">
+                        <h3 style="margin-top: 0;">데이터베이스 통계</h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
+                            <div class="stat-card" style="margin: 0;"><div class="label">총 사용자</div><div class="value" style="font-size: 28px;" id="status-db-users">0</div></div>
+                            <div class="stat-card" style="margin: 0;"><div class="label">총 규칙</div><div class="value" style="font-size: 28px;" id="status-db-rules">0</div></div>
+                            <div class="stat-card" style="margin: 0;"><div class="label">총 로그</div><div class="value" style="font-size: 28px;" id="status-db-logs">0</div></div>
+                            <div class="stat-card" style="margin: 0;"><div class="label">최근 24시간</div><div class="value" style="font-size: 28px;" id="status-db-logs-24h">0</div></div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <h3 style="margin-top: 0;">서비스 상태</h3>
+                        <table>
+                            <thead>
+                                <tr><th>서비스</th><th>상태</th><th>세부 정보</th></tr>
+                            </thead>
+                            <tbody id="status-services-body"></tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
         </main>
     </div>
@@ -148,6 +249,8 @@
             else if (viewId === 'users') fetchUsersAndRender();
             else if (viewId === 'rules') fetchRulesAndRender();
             else if (viewId === 'dashboard') updateDashboardData();
+            else if (viewId === 'status') fetchSystemStatus();
+            else if (viewId === 'documents') fetchDocuments();
         };
         
         navLinks.forEach(link => {
@@ -168,23 +271,75 @@
 
         const renderTrendsChart = async () => {
             try {
-                const response = await fetch(`${API_BASE}/trends`);
-                if (!response.ok) return;
+                const response = await fetch(`${API_BASE}/trends`, { cache: 'no-store' });
+                if (!response.ok) {
+                    console.error('Trends API error:', response.status);
+                    return;
+                }
                 const trendsData = await response.json();
+                console.log('Trends data:', trendsData);
+                console.log('Trends labels:', trendsData.labels);
+                console.log('Trends datasets:', trendsData.datasets.map(d => ({label: d.label, data: d.data})));
+                
                 const trendsCtx = document.getElementById('trends-chart').getContext('2d');
-                if (trendsChartInstance) trendsChartInstance.destroy();
-                trendsChartInstance = new Chart(trendsCtx, { type: 'line', data: trendsData, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } } });
+                
+                // 항상 차트를 새로 그림 (데이터 업데이트 확실하게)
+                if (trendsChartInstance) {
+                    trendsChartInstance.destroy();
+                }
+                
+                trendsChartInstance = new Chart(trendsCtx, { 
+                    type: 'line', 
+                    data: trendsData, 
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        scales: { y: { beginAtZero: true } },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        }
+                    } 
+                });
+                console.log('Trends chart created:', trendsChartInstance);
             } catch (error) { console.error("Trends chart error:", error); }
         };
         
         const renderPiiChart = async () => {
             try {
-                const response = await fetch(`${API_BASE}/distribution`);
-                if (!response.ok) return;
+                const response = await fetch(`${API_BASE}/distribution`, { cache: 'no-store' });
+                if (!response.ok) {
+                    console.error('Distribution API error:', response.status);
+                    return;
+                }
                 const piiData = await response.json();
+                console.log('PII data:', piiData);
+                console.log('PII labels:', piiData.labels);
+                console.log('PII dataset data:', piiData.datasets[0].data);
+                
                 const piiCtx = document.getElementById('pii-chart').getContext('2d');
-                if (piiChartInstance) piiChartInstance.destroy();
-                piiChartInstance = new Chart(piiCtx, { type: 'pie', data: piiData, options: { responsive: true, maintainAspectRatio: false } });
+                
+                // 항상 차트를 새로 그림 (데이터 업데이트 확실하게)
+                if (piiChartInstance) {
+                    piiChartInstance.destroy();
+                }
+                
+                piiChartInstance = new Chart(piiCtx, { 
+                    type: 'pie', 
+                    data: piiData, 
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        }
+                    } 
+                });
             } catch (error) { console.error("PII chart error:", error); }
         };
         
@@ -236,10 +391,19 @@
             userTableBody.innerHTML = '';
             users.forEach(user => {
                 const tr = document.createElement('tr');
+                const lastLogin = user.last_login 
+                    ? new Date(user.last_login).toLocaleString('ko-KR', { 
+                        year: 'numeric', 
+                        month: '2-digit', 
+                        day: '2-digit', 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    })
+                    : '접속 기록 없음';
                 tr.innerHTML = `
                     <td>${user.id}</td>
                     <td><span class="tag ${user.role}">${user.role.toUpperCase()}</span></td>
-                    <td>(구현 예정)</td>
+                    <td>${lastLogin}</td>
                     <td>
                         <button class="btn btn-sm" onclick="editUser('${user.id}')">수정</button>
                         <button class="btn btn-sm btn-danger" onclick="deleteUser('${user.id}')">삭제</button>
@@ -258,20 +422,90 @@
                 fetchUsersAndRender();
             } catch (error) { console.error(error); alert(error.message); }
         };
-        window.editUser = (userId) => alert(`'${userId}' 사용자 수정 기능은 아직 구현되지 않았습니다.`);
         
-        document.getElementById('add-user-btn').addEventListener('click', () => { userForm.reset(); document.getElementById('user-modal-title').textContent = '새 사용자 추가'; userModal.style.display = 'grid'; });
+        window.editUser = async (userId) => {
+            try {
+                // 사용자 정보 불러오기
+                const response = await fetch(`${API_BASE}/users`);
+                if (!response.ok) throw new Error('사용자 정보를 불러오는 데 실패했습니다.');
+                const users = await response.json();
+                const user = users.find(u => u.id === userId);
+                if (!user) throw new Error('사용자를 찾을 수 없습니다.');
+                
+                // 모달에 기존 정보 채우기
+                document.getElementById('user-modal-title').textContent = '사용자 수정';
+                document.getElementById('user-id-hidden').value = user.id;
+                document.getElementById('user-email').value = user.id;
+                document.getElementById('user-email').disabled = true; // ID는 수정 불가
+                document.getElementById('user-password').value = ''; // 비밀번호는 변경 시에만 입력
+                document.getElementById('user-password').placeholder = '변경하지 않으려면 비워두세요';
+                document.getElementById('user-role').value = user.role;
+                
+                userModal.style.display = 'grid';
+            } catch (error) {
+                console.error(error);
+                alert(error.message);
+            }
+        };
+        
+        document.getElementById('add-user-btn').addEventListener('click', () => { 
+            userForm.reset(); 
+            document.getElementById('user-modal-title').textContent = '새 사용자 추가'; 
+            document.getElementById('user-id-hidden').value = '';
+            document.getElementById('user-email').disabled = false;
+            document.getElementById('user-password').placeholder = '';
+            userModal.style.display = 'grid'; 
+        });
         document.getElementById('user-modal-close').addEventListener('click', () => { userModal.style.display = 'none'; });
         userForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const userData = { id: document.getElementById('user-email').value, password: document.getElementById('user-password').value, role: document.getElementById('user-role').value };
-            if (!userData.password) return alert('새 사용자를 추가할 때는 비밀번호가 필수입니다.');
+            const userId = document.getElementById('user-id-hidden').value;
+            const isEditing = userId !== '';
+            
+            const userData = { 
+                id: document.getElementById('user-email').value, 
+                password: document.getElementById('user-password').value, 
+                role: document.getElementById('user-role').value 
+            };
+            
+            // 수정 모드일 때는 비밀번호가 비어있으면 제외
+            if (isEditing && !userData.password) {
+                delete userData.password;
+            }
+            
+            // 추가 모드일 때는 비밀번호 필수
+            if (!isEditing && !userData.password) {
+                return alert('새 사용자를 추가할 때는 비밀번호가 필수입니다.');
+            }
+            
             try {
-                const response = await fetch(`${API_BASE}/users`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(userData) });
-                if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error || '사용자 추가에 실패했습니다.'); }
+                let response;
+                if (isEditing) {
+                    // 수정 API 호출
+                    response = await fetch(`${API_BASE}/users/${userId}`, { 
+                        method: 'PUT', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify(userData) 
+                    });
+                } else {
+                    // 추가 API 호출
+                    response = await fetch(`${API_BASE}/users`, { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify(userData) 
+                    });
+                }
+                
+                if (!response.ok) { 
+                    const errorData = await response.json(); 
+                    throw new Error(errorData.error || (isEditing ? '사용자 수정에 실패했습니다.' : '사용자 추가에 실패했습니다.')); 
+                }
                 userModal.style.display = 'none';
                 fetchUsersAndRender();
-            } catch (error) { console.error(error); alert(error.message); }
+            } catch (error) { 
+                console.error(error); 
+                alert(error.message); 
+            }
         });
 
         const fetchRulesAndRender = async () => {
@@ -311,19 +545,79 @@
                 fetchRulesAndRender();
             } catch (error) { console.error(error); alert(error.message); }
         };
-        window.editRule = (ruleId) => alert(`'ID: ${ruleId}' 규칙 수정 기능은 아직 구현되지 않았습니다.`);
         
-        document.getElementById('add-rule-btn').addEventListener('click', () => { ruleForm.reset(); document.getElementById('rule-modal-title').textContent = '새 규칙 추가'; ruleModal.style.display = 'grid'; });
+        window.editRule = async (ruleId) => {
+            try {
+                // 규칙 정보 불러오기
+                const response = await fetch(`${API_BASE}/rules`);
+                if (!response.ok) throw new Error('규칙 정보를 불러오는 데 실패했습니다.');
+                const rules = await response.json();
+                const rule = rules.find(r => r.id === ruleId);
+                if (!rule) throw new Error('규칙을 찾을 수 없습니다.');
+                
+                // 모달에 기존 정보 채우기
+                document.getElementById('rule-modal-title').textContent = '규칙 수정';
+                document.getElementById('rule-id-hidden').value = rule.id;
+                document.getElementById('rule-name').value = rule.name;
+                document.getElementById('rule-regex').value = rule.regex;
+                document.getElementById('rule-action').value = rule.action;
+                document.getElementById('rule-status').value = rule.is_active ? 'active' : 'inactive';
+                document.getElementById('rule-ai-description').value = ''; // AI 설명 필드는 초기화
+                
+                ruleModal.style.display = 'grid';
+            } catch (error) {
+                console.error(error);
+                alert(error.message);
+            }
+        };
+        
+        document.getElementById('add-rule-btn').addEventListener('click', () => { 
+            ruleForm.reset(); 
+            document.getElementById('rule-modal-title').textContent = '새 규칙 추가'; 
+            document.getElementById('rule-id-hidden').value = '';
+            ruleModal.style.display = 'grid'; 
+        });
         document.getElementById('rule-modal-close').addEventListener('click', () => { ruleModal.style.display = 'none'; });
         ruleForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const ruleData = { name: document.getElementById('rule-name').value, regex: document.getElementById('rule-regex').value, action: document.getElementById('rule-action').value, is_active: document.getElementById('rule-status').value === 'active' };
+            const ruleId = document.getElementById('rule-id-hidden').value;
+            const isEditing = ruleId !== '';
+            
+            const ruleData = { 
+                name: document.getElementById('rule-name').value, 
+                regex: document.getElementById('rule-regex').value, 
+                action: document.getElementById('rule-action').value, 
+                is_active: document.getElementById('rule-status').value === 'active' 
+            };
+            
             try {
-                const response = await fetch(`${API_BASE}/rules`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ruleData) });
-                if (!response.ok) { const errorData = await response.json(); throw new Error(errorData.error || '규칙 추가에 실패했습니다.'); }
+                let response;
+                if (isEditing) {
+                    // 수정 API 호출
+                    response = await fetch(`${API_BASE}/rules/${ruleId}`, { 
+                        method: 'PUT', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify(ruleData) 
+                    });
+                } else {
+                    // 추가 API 호출
+                    response = await fetch(`${API_BASE}/rules`, { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify(ruleData) 
+                    });
+                }
+                
+                if (!response.ok) { 
+                    const errorData = await response.json(); 
+                    throw new Error(errorData.error || (isEditing ? '규칙 수정에 실패했습니다.' : '규칙 추가에 실패했습니다.')); 
+                }
                 ruleModal.style.display = 'none';
                 fetchRulesAndRender();
-            } catch (error) { console.error(error); alert(error.message); }
+            } catch (error) { 
+                console.error(error); 
+                alert(error.message); 
+            }
         });
         
         document.getElementById('generate-regex-btn').addEventListener('click', async () => {
@@ -347,9 +641,168 @@
             }
         });
 
+        const fetchSystemStatus = async () => {
+            try {
+                const response = await fetch(`${API_BASE}/system-status`);
+                if (!response.ok) throw new Error('시스템 상태를 불러오는 데 실패했습니다.');
+                const status = await response.json();
+                renderSystemStatus(status);
+            } catch (error) {
+                console.error(error);
+                alert(error.message);
+            }
+        };
+        
+        const renderSystemStatus = (status) => {
+            // 서버 정보
+            document.getElementById('status-python').textContent = status.server.python_version;
+            document.getElementById('status-os').textContent = status.server.os;
+            document.getElementById('status-platform').textContent = status.server.platform;
+            
+            // 리소스 사용량
+            const cpuPercent = status.resources.cpu_percent;
+            const memoryPercent = status.resources.memory_percent;
+            const diskPercent = status.resources.disk_percent;
+            
+            document.getElementById('status-cpu-percent').textContent = cpuPercent + '%';
+            document.getElementById('status-cpu-bar').style.width = cpuPercent + '%';
+            
+            document.getElementById('status-memory-percent').textContent = memoryPercent + '%';
+            document.getElementById('status-memory-bar').style.width = memoryPercent + '%';
+            document.getElementById('status-memory-used').textContent = status.resources.memory_used_gb;
+            document.getElementById('status-memory-total').textContent = status.resources.memory_total_gb;
+            
+            document.getElementById('status-disk-percent').textContent = diskPercent + '%';
+            document.getElementById('status-disk-bar').style.width = diskPercent + '%';
+            document.getElementById('status-disk-used').textContent = status.resources.disk_used_gb;
+            document.getElementById('status-disk-total').textContent = status.resources.disk_total_gb;
+            
+            // 데이터베이스 통계
+            document.getElementById('status-db-users').textContent = status.database.total_users.toLocaleString();
+            document.getElementById('status-db-rules').textContent = status.database.total_rules.toLocaleString();
+            document.getElementById('status-db-logs').textContent = status.database.total_logs.toLocaleString();
+            document.getElementById('status-db-logs-24h').textContent = status.database.logs_24h.toLocaleString();
+            
+            // 서비스 상태
+            const servicesBody = document.getElementById('status-services-body');
+            servicesBody.innerHTML = '';
+            
+            const services = [
+                { name: 'Ollama', status: status.services.ollama.status, detail: status.services.ollama.models || 'N/A' },
+                { name: 'Gemini API', status: status.services.gemini.status, detail: status.services.gemini.info || 'N/A' },
+                { name: 'Database', status: status.services.database.status, detail: status.services.database.info || 'SQLite' }
+            ];
+            
+            services.forEach(service => {
+                const tr = document.createElement('tr');
+                const statusClass = service.status === 'online' || service.status === 'configured' ? 'success' : 'danger';
+                const statusText = service.status === 'online' ? '✅ 온라인' : 
+                                   service.status === 'configured' ? '✅ 설정됨' : 
+                                   '❌ 오프라인';
+                tr.innerHTML = `
+                    <td><strong>${service.name}</strong></td>
+                    <td><span style="color: var(--${statusClass});">${statusText}</span></td>
+                    <td>${service.detail}</td>
+                `;
+                servicesBody.appendChild(tr);
+            });
+        };
+
+        // ==================== 문서 관리 (RAG) ====================
+        const fetchDocuments = async () => {
+            try {
+                const response = await fetch(`${API_BASE}/documents`);
+                if (!response.ok) throw new Error('Failed to fetch documents');
+                const data = await response.json();
+                renderDocuments(data.documents);
+            } catch (error) {
+                console.error('Documents fetch error:', error);
+                document.getElementById('documents-table-body').innerHTML = 
+                    '<tr><td colspan="4" style="text-align: center; color: var(--danger);">문서 목록을 불러오는데 실패했습니다.</td></tr>';
+            }
+        };
+
+        const renderDocuments = (documents) => {
+            const tbody = document.getElementById('documents-table-body');
+            if (!documents || documents.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--sub);">등록된 문서가 없습니다. <code>scripts/rag_docs/</code> 폴더에 PDF 파일을 추가하세요.</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = documents.map(doc => `
+                <tr>
+                    <td><strong>${doc.filename}</strong></td>
+                    <td>${doc.size}</td>
+                    <td>${doc.upload_time}</td>
+                    <td><button class="btn btn-sm danger" onclick="deleteDocument('${doc.filename}')">삭제</button></td>
+                </tr>
+            `).join('');
+        };
+
+        const deleteDocument = async (filename) => {
+            if (!confirm(`"${filename}" 파일을 삭제하시겠습니까?`)) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/documents/${encodeURIComponent(filename)}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert(result.message || '파일이 삭제되었습니다.');
+                    fetchDocuments();
+                } else {
+                    alert('삭제 실패: ' + (result.error || '알 수 없는 오류'));
+                }
+            } catch (error) {
+                console.error('Delete error:', error);
+                alert('파일 삭제 중 오류가 발생했습니다.');
+            }
+        };
+        window.deleteDocument = deleteDocument;
+
+        const rebuildRAG = async () => {
+            if (!confirm('RAG 시스템을 재구축하시겠습니까? 시간이 다소 걸릴 수 있습니다.')) return;
+            
+            const btn = document.getElementById('rebuild-rag-btn');
+            btn.disabled = true;
+            btn.textContent = '⏳ 재구축 중...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/documents/rebuild-rag`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    alert(result.message || 'RAG 재구축이 완료되었습니다.');
+                } else {
+                    alert('재구축 실패: ' + (result.error || '알 수 없는 오류'));
+                }
+            } catch (error) {
+                console.error('Rebuild error:', error);
+                alert('RAG 재구축 중 오류가 발생했습니다.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '⚡ RAG 재구축';
+            }
+        };
+
+        // 문서 관리 버튼 이벤트
+        const refreshDocsBtn = document.getElementById('refresh-docs-btn');
+        if (refreshDocsBtn) {
+            refreshDocsBtn.addEventListener('click', fetchDocuments);
+        }
+        
+        const rebuildRagBtn = document.getElementById('rebuild-rag-btn');
+        if (rebuildRagBtn) {
+            rebuildRagBtn.addEventListener('click', rebuildRAG);
+        }
+
         const init = () => {
             showView('dashboard');
-            setInterval(updateDashboardData, 10000); 
+            // 60초마다 자동 새로고침 (너무 자주하면 차트가 깜빡임)
+            setInterval(updateDashboardData, 60000); 
         };
         
         init();

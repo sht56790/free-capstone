@@ -4,6 +4,7 @@ import json
 import time
 import traceback
 from typing import List, Dict, Any, Tuple
+from datetime import datetime
 import requests
 import re
 
@@ -58,16 +59,17 @@ def create_app():
         api_key = os.environ.get("GOOGLE_API_KEY")
         global ORIGINAL_GEMINI_SYSTEM_INSTRUCTION
         if api_key:
+            print(f"✅ Gemini API Key loaded: {api_key[:10]}...{api_key[-4:]}")
             genai.configure(api_key=api_key)
             system_instr_str = (
-                    "당신은 '금융회사 직원 보조용' 상담 에이전트입니다. 답변 대상은 '직원'이며, 직원이 고객에게 안내할 수 있도록 내부용 톤으로 작성합니다. 고객에게 되묻는 형태(추가 정보 요청 질문)는 피하고, 직원이 바로 읽어줄 수 있는 '고객 응대 멘트'를 제공합니다. 생성형 서술을 지양하고, 내부 매뉴얼/약관/FAQ에 근거한 응답만 제공합니다. 다음 원칙과 고정 템플릿을 반드시 준수하세요:\n\n"
+                    "당신은 '금융회사 직원 전용 업무 보조 AI'입니다. 답변 대상은 '직원'이며, 금융 상담 외에도 일상적인 질문(날씨, 시간 등)에도 답변합니다. 직원이 고객에게 안내할 수 있도록 내부용 톤으로 작성하며, 직원이 바로 읽어줄 수 있는 '고객 응대 멘트'를 제공합니다. 금융 질문은 내부 매뉴얼/약관/FAQ를 우선 참조하되, 없으면 일반 지식으로 답변 가능합니다. 다음 원칙을 준수하세요:\n\n"
                     "1. 고객정보 보호: 계좌번호·고객번호·고객명을 요청하거나 노출하지 마세요. "
                     "이미 마스킹된 값([PHONE], [EMAIL], [CARD], [ADDRESS], [JWT], [UUID] 등)은 복원하지 마세요.\n\n"
                     "2. 금리·수수료 확정 표현 금지: '수수료는 5,000원입니다', '금리는 3.5%입니다' 같은 확정 표현은 절대 사용하지 마세요. "
                     "대신 '수수료는 약 3,000~8,000원 범위입니다. 정확한 금액은 영업점 문의 바랍니다.' 또는 "
                     "'금리는 상품·기간에 따라 다르며, 정확한 금리는 영업점 문의 바랍니다.' 같은 표현을 사용하세요.\n\n"
-                    "3. 질문에 대한 답변 허용: '수수료는 어떻게 결정되나요?', '금리는 어떻게 되나요?' 같은 질문은 정상적으로 답변해주세요. "
-                    "매뉴얼에 있는 정보를 바탕으로 수수료 결정 방식, 금리 범위, 절차 등을 안내할 수 있습니다. "
+                    "3. 질문에 대한 답변 허용: '수수료는 어떻게 결정되나요?', '금리는 어떻게 되나요?' 같은 금융 질문은 매뉴얼을 바탕으로 답변하세요. "
+                    "'오늘 날씨 어때?', '지금 몇 시야?' 같은 일반 질문에도 간결하게 답변하고 '추가로 금융 관련 문의가 있으시면 말씀해주세요'로 마무리하세요. "
                     "단, 확정적인 금액이나 수치를 제시하지 마세요.\n\n"
                     "4. 절차 안내만 제공: 가입·신청 절차만 안내하고, 실제 거래는 금지합니다. "
                     "'계좌 이체 가능합니다' 같은 표현은 금지하며, '계좌 이체는 직접 신청하거나 상담원 연결이 필요합니다.'로 안내하세요.\n\n"
@@ -93,10 +95,12 @@ def create_app():
                 )
             ORIGINAL_GEMINI_SYSTEM_INSTRUCTION = system_instr_str
             app.GMODEL = genai.GenerativeModel(
-                "gemini-2.5-pro",
+                "gemini-2.0-flash",
                 system_instruction=system_instr_str
             )
+            print("✅ Gemini model initialized: gemini-2.0-flash")
         else:
+            print("❌ GOOGLE_API_KEY not found in environment")
             app.GMODEL = None
             ORIGINAL_GEMINI_SYSTEM_INSTRUCTION = ""
 
@@ -138,6 +142,10 @@ def create_app():
         user_in_db = User.query.get(user_id)
         
         if user_in_db and user_in_db.password == password:
+            # 마지막 로그인 시간 업데이트
+            user_in_db.last_login = datetime.utcnow()
+            db.session.commit()
+            
             session['user_id'] = user_in_db.id
             session['role'] = user_in_db.role
             return jsonify({"success": True, "role": user_in_db.role})
@@ -171,17 +179,56 @@ def create_app():
             if uploaded_file and uploaded_file.filename:
                 filename = secure_filename(uploaded_file.filename)
                 print(f"Received file: {filename}")
-                if filename.lower().endswith('.txt'):
+                
+                # 확장자 추출 (대소문자 무시, 점이 없으면 빈 문자열)
+                if '.' in filename:
+                    file_ext = filename.lower().rsplit('.', 1)[-1]
+                else:
+                    file_ext = ''
+                
+                # 지원하는 파일 형식 확인
+                if file_ext == 'txt':
+                    # 텍스트 파일 처리
                     try:
                         file_bytes = uploaded_file.read()
                         file_content = file_bytes.decode('utf-8')
                     except UnicodeDecodeError:
-                        try: file_content = file_bytes.decode('cp949')
-                        except: file_content = "[파일 인코딩 오류]"
-                    print(f"Read {len(file_content)} chars from {filename}")
+                        try: 
+                            file_content = file_bytes.decode('cp949')
+                        except: 
+                            file_content = "[파일 인코딩 오류]"
+                    print(f"Read {len(file_content)} chars from TXT file: {filename}")
+                    
+                elif file_ext == 'pdf':
+                    # PDF 파일 처리
+                    try:
+                        from pypdf import PdfReader
+                        from io import BytesIO
+                        
+                        pdf_bytes = uploaded_file.read()
+                        pdf_file = BytesIO(pdf_bytes)
+                        reader = PdfReader(pdf_file)
+                        
+                        # 모든 페이지에서 텍스트 추출
+                        pdf_text = []
+                        for i, page in enumerate(reader.pages):
+                            page_text = page.extract_text()
+                            if page_text.strip():
+                                pdf_text.append(f"--- Page {i+1} ---\n{page_text}")
+                        
+                        file_content = "\n\n".join(pdf_text) if pdf_text else "[PDF에서 텍스트를 추출할 수 없습니다]"
+                        print(f"Read {len(file_content)} chars from PDF file: {filename} ({len(reader.pages)} pages)")
+                    except Exception as e:
+                        print(f"PDF processing error: {e}")
+                        file_content = f"[PDF 파일 처리 오류: {str(e)}]"
+                        
                 else:
-                    print(f"Skipping non-txt file: {filename}")
-                    file_content = f"[{filename} 파일 내용은 처리되지 않음]"
+                    # 지원하지 않는 파일 형식
+                    print(f"Unsupported file type: {filename} (.{file_ext})")
+                    return jsonify({
+                        "error": "지원하지 않는 파일 형식입니다.",
+                        "detail": f"현재 .txt, .pdf 파일만 지원합니다. (업로드된 파일: {filename})"
+                    }), 400
 
             # --- 3. messages 파싱 및 최종 프롬프트 생성 ---
             messages: List[Dict[str, str]] = json.loads(messages_json_string)
@@ -282,10 +329,10 @@ def create_app():
                 # 모델 라우팅: ollama:* 은 Ollama로, 그 외는 기존 로직
                 if model_id.startswith("ollama:"):
                     final_system_instruction = (
-                        "당신은 '금융회사 직원 보조용' 상담 에이전트입니다. "
-                        "모든 답변은 아래 [검색된 참고 자료]를 바탕으로 작성하세요.\n\n"
-                        "자료에서 답을 찾지 못하면 '내부 자료에서 관련 정보를 찾을 수 없습니다'라고 답변하세요.\n"
-                        "금융 상담 템플릿(## 답변, ## 근거 출처, ## 다음 단계)을 반드시 준수하세요.\n\n"
+                        "당신은 '금융회사 직원 보조용' AI 어시스턴트입니다.\n\n"
+                        "- 금융 질문: 아래 [검색된 참고 자료]를 우선 참조하여 답변하세요. 자료에 없으면 일반 지식으로 답변 가능합니다.\n"
+                        "- 일반 질문(날씨, 시간 등): 간결하게 답변하세요.\n\n"
+                        "금융 질문은 템플릿(## 답변, ## 근거 출처, ## 다음 단계)을 사용하되, 일반 질문은 자유 형식으로 답변하세요.\n\n"
                         "--- [검색된 참고 자료] ---\n"
                         f"{context}\n"
                         "--------------------------\n"
@@ -307,7 +354,7 @@ def create_app():
                             + context
                         )
                         gmodel_with_rag = genai.GenerativeModel(
-                            "gemini-2.5-pro",
+                            "gemini-2.0-flash",
                             system_instruction=final_system_instruction
                         )
                         llm_resp = call_gemini_generate(model_id, sanitized_messages, gmodel_with_rag, context=context)
@@ -652,15 +699,6 @@ def format_counselor_response(text: str, original_input: str = "") -> str:
                 t,
                 count=1
             )
-
-    # 고정 부가 섹션 보강
-    if "## 큰 키워드" not in t:
-        t = t.rstrip() + "\n\n## 큰 키워드\n- (핵심 키워드 요약)"
-    if "** 이 멘트는 지침에 따라 자동 생성되었습니다." not in t:
-        t = t.rstrip() + "\n\n** 이 멘트는 지침에 따라 자동 생성되었습니다."
-
-    if "## 다음 단계" not in t:
-        t = t.rstrip() + "\n\n## 다음 단계\n- (다음 조치 제안)"
 
     return t
 
