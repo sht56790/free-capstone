@@ -1,36 +1,24 @@
 import os
-import re
-import json
 import time
 import traceback
-from typing import List, Dict, Any, Tuple
-import requests
-import re
+from datetime import datetime
+from typing import List, Dict, Any
 
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
-from types import SimpleNamespace
 from flask_cors import CORS
 from dotenv import load_dotenv
 import google.generativeai as genai
 from werkzeug.utils import secure_filename
-from typing import List, Dict, Any
 
 # --- 모듈 임포트 ---
 from database import db
 from routes.admin import admin_bp
 from models import User, Log, Rule
-from services.ollama_service import judge_sensitive_with_ollama, generate_regex_from_ollama, _post_ollama_generate
-from services.policy_service import apply_patterns, apply_ai_judgement, apply_patterns_for_output, apply_patterns_for_output_excluding_summary
+from services.ollama_service import judge_sensitive_with_ollama
+from services.policy_service import apply_patterns, apply_patterns_for_output_excluding_summary
 from services.rag_service import retrieve_context
 
-# Ollama 설정 (파일 상단 또는 설정 파일에서 관리)
-OLLAMA_API_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL_FOR_JUDGE = "qwen3:8b" # 사용할 모델 선택 (예: llama3:8b, qwen:14b)
-OLLAMA_MODEL_FOR_REGEX = "qwen3:8b"
-
 ORIGINAL_GEMINI_SYSTEM_INSTRUCTION = ""
-
-## moved to services.ollama_service
     
 # ==================================================================
 # 💎 앱 생성 및 초기화 (Application Factory)
@@ -60,14 +48,14 @@ def create_app():
         if api_key:
             genai.configure(api_key=api_key)
             system_instr_str = (
-                    "당신은 '금융회사 직원 보조용' 상담 에이전트입니다. 답변 대상은 '직원'이며, 직원이 고객에게 안내할 수 있도록 내부용 톤으로 작성합니다. 고객에게 되묻는 형태(추가 정보 요청 질문)는 피하고, 직원이 바로 읽어줄 수 있는 '고객 응대 멘트'를 제공합니다. 생성형 서술을 지양하고, 내부 매뉴얼/약관/FAQ에 근거한 응답만 제공합니다. 다음 원칙과 고정 템플릿을 반드시 준수하세요:\n\n"
+                    "당신은 '금융회사 직원 전용 업무 보조 AI'입니다. 답변 대상은 '직원'이며, 금융 상담 외에도 일상적인 질문(날씨, 시간 등)에도 답변합니다. 직원이 고객에게 안내할 수 있도록 내부용 톤으로 작성하며, 직원이 바로 읽어줄 수 있는 '고객 응대 멘트'를 제공합니다. 금융 질문은 내부 매뉴얼/약관/FAQ를 우선 참조하되, 없으면 일반 지식으로 답변 가능합니다. 다음 원칙을 준수하세요:\n\n"
                     "1. 고객정보 보호: 계좌번호·고객번호·고객명을 요청하거나 노출하지 마세요. "
                     "이미 마스킹된 값([PHONE], [EMAIL], [CARD], [ADDRESS], [JWT], [UUID] 등)은 복원하지 마세요.\n\n"
                     "2. 금리·수수료 확정 표현 금지: '수수료는 5,000원입니다', '금리는 3.5%입니다' 같은 확정 표현은 절대 사용하지 마세요. "
                     "대신 '수수료는 약 3,000~8,000원 범위입니다. 정확한 금액은 영업점 문의 바랍니다.' 또는 "
                     "'금리는 상품·기간에 따라 다르며, 정확한 금리는 영업점 문의 바랍니다.' 같은 표현을 사용하세요.\n\n"
-                    "3. 질문에 대한 답변 허용: '수수료는 어떻게 결정되나요?', '금리는 어떻게 되나요?' 같은 질문은 정상적으로 답변해주세요. "
-                    "매뉴얼에 있는 정보를 바탕으로 수수료 결정 방식, 금리 범위, 절차 등을 안내할 수 있습니다. "
+                    "3. 질문에 대한 답변 허용: '수수료는 어떻게 결정되나요?', '금리는 어떻게 되나요?' 같은 금융 질문은 매뉴얼을 바탕으로 답변하세요. "
+                    "'오늘 날씨 어때?', '지금 몇 시야?' 같은 일반 질문에도 간결하게 답변하고 '추가로 금융 관련 문의가 있으시면 말씀해주세요'로 마무리하세요. "
                     "단, 확정적인 금액이나 수치를 제시하지 마세요.\n\n"
                     "4. 절차 안내만 제공: 가입·신청 절차만 안내하고, 실제 거래는 금지합니다. "
                     "'계좌 이체 가능합니다' 같은 표현은 금지하며, '계좌 이체는 직접 신청하거나 상담원 연결이 필요합니다.'로 안내하세요.\n\n"
@@ -93,7 +81,7 @@ def create_app():
                 )
             ORIGINAL_GEMINI_SYSTEM_INSTRUCTION = system_instr_str
             app.GMODEL = genai.GenerativeModel(
-                "gemini-2.5-pro",
+                "gemini-2.0-flash",
                 system_instruction=system_instr_str
             )
         else:
@@ -138,6 +126,10 @@ def create_app():
         user_in_db = User.query.get(user_id)
         
         if user_in_db and user_in_db.password == password:
+            # 마지막 로그인 시간 업데이트
+            user_in_db.last_login = datetime.utcnow()
+            db.session.commit()
+            
             session['user_id'] = user_in_db.id
             session['role'] = user_in_db.role
             return jsonify({"success": True, "role": user_in_db.role})
@@ -170,18 +162,52 @@ def create_app():
 
             if uploaded_file and uploaded_file.filename:
                 filename = secure_filename(uploaded_file.filename)
-                print(f"Received file: {filename}")
-                if filename.lower().endswith('.txt'):
+                
+                # 확장자 추출 (대소문자 무시, 점이 없으면 빈 문자열)
+                if '.' in filename:
+                    file_ext = filename.lower().rsplit('.', 1)[-1]
+                else:
+                    file_ext = ''
+                
+                # 지원하는 파일 형식 확인
+                if file_ext == 'txt':
+                    # 텍스트 파일 처리
                     try:
                         file_bytes = uploaded_file.read()
                         file_content = file_bytes.decode('utf-8')
                     except UnicodeDecodeError:
-                        try: file_content = file_bytes.decode('cp949')
-                        except: file_content = "[파일 인코딩 오류]"
-                    print(f"Read {len(file_content)} chars from {filename}")
+                        try: 
+                            file_content = file_bytes.decode('cp949')
+                        except: 
+                            file_content = "[파일 인코딩 오류]"
+                
+                elif file_ext == 'pdf':
+                    # PDF 파일 처리
+                    try:
+                        from pypdf import PdfReader
+                        from io import BytesIO
+                        
+                        pdf_bytes = uploaded_file.read()
+                        pdf_file = BytesIO(pdf_bytes)
+                        reader = PdfReader(pdf_file)
+                        
+                        # 모든 페이지에서 텍스트 추출
+                        pdf_text = []
+                        for i, page in enumerate(reader.pages):
+                            page_text = page.extract_text()
+                            if page_text.strip():
+                                pdf_text.append(f"--- Page {i+1} ---\n{page_text}")
+                        
+                        file_content = "\n\n".join(pdf_text) if pdf_text else "[PDF에서 텍스트를 추출할 수 없습니다]"
+                    except Exception as e:
+                        file_content = f"[PDF 파일 처리 오류: {str(e)}]"
+                        
                 else:
-                    print(f"Skipping non-txt file: {filename}")
-                    file_content = f"[{filename} 파일 내용은 처리되지 않음]"
+                    # 지원하지 않는 파일 형식
+                    return jsonify({
+                        "error": "지원하지 않는 파일 형식입니다.",
+                        "detail": f"현재 .txt, .pdf 파일만 지원합니다. (업로드된 파일: {filename})"
+                    }), 400
 
             # --- 3. messages 파싱 및 최종 프롬프트 생성 ---
             messages: List[Dict[str, str]] = json.loads(messages_json_string)
@@ -282,10 +308,10 @@ def create_app():
                 # 모델 라우팅: ollama:* 은 Ollama로, 그 외는 기존 로직
                 if model_id.startswith("ollama:"):
                     final_system_instruction = (
-                        "당신은 '금융회사 직원 보조용' 상담 에이전트입니다. "
-                        "모든 답변은 아래 [검색된 참고 자료]를 바탕으로 작성하세요.\n\n"
-                        "자료에서 답을 찾지 못하면 '내부 자료에서 관련 정보를 찾을 수 없습니다'라고 답변하세요.\n"
-                        "금융 상담 템플릿(## 답변, ## 근거 출처, ## 다음 단계)을 반드시 준수하세요.\n\n"
+                        "당신은 '금융회사 직원 보조용' AI 어시스턴트입니다.\n\n"
+                        "- 금융 질문: 아래 [검색된 참고 자료]를 우선 참조하여 답변하세요. 자료에 없으면 일반 지식으로 답변 가능합니다.\n"
+                        "- 일반 질문(날씨, 시간 등): 간결하게 답변하세요.\n\n"
+                        "금융 질문은 템플릿(## 답변, ## 근거 출처, ## 다음 단계)을 사용하되, 일반 질문은 자유 형식으로 답변하세요.\n\n"
                         "--- [검색된 참고 자료] ---\n"
                         f"{context}\n"
                         "--------------------------\n"
@@ -307,7 +333,7 @@ def create_app():
                             + context
                         )
                         gmodel_with_rag = genai.GenerativeModel(
-                            "gemini-2.5-pro",
+                            "gemini-2.0-flash",
                             system_instruction=final_system_instruction
                         )
                         llm_resp = call_gemini_generate(model_id, sanitized_messages, gmodel_with_rag, context=context)
@@ -340,7 +366,6 @@ def create_app():
             traceback.print_exc()
             return jsonify({"error": "잘못된 messages 형식"}), 400
         except Exception as e: # 그 외 모든 예외 처리 (파일 처리 오류 등)
-            print(f"An error occurred BEFORE filtering/LLM call: {e}")
             traceback.print_exc()
             log_data = { # 오류 로그 준비
                 "action": "error", "processed_prompt_for_llm": "ERROR", "llm_response": str(e),
@@ -354,7 +379,6 @@ def create_app():
                 })
                 save_log_to_db(log_data)
             except Exception as db_e:
-                print(f"!!! CRITICAL: Failed to save ERROR log to DB: {db_e}")
                 traceback.print_exc()
             return jsonify({"error": "서버 내부 오류 발생", "detail": str(e)}), 500
 
@@ -369,7 +393,6 @@ def create_app():
                     })
                     save_log_to_db(log_data)
             except Exception as db_e:
-                print(f"!!! CRITICAL: Failed to save log to DB in finally block: {db_e}")
                 traceback.print_exc()
 
         # --- 최종 응답 반환 ---
@@ -433,60 +456,24 @@ def create_app():
     # ==================================================================
     @app.cli.command("init-db")
     def init_db_command():
-        """데이터베이스 테이블을 초기화하고 기본 데이터(사용자, 규칙)를 생성합니다."""
+        """데이터베이스 테이블을 초기화하고 기본 데이터(사용자)를 생성합니다."""
         db.create_all()
 
         # --- 기본 사용자 생성 ---
         if not User.query.get('admin@company.com'):
-            print("Creating default admin account...")
             admin = User(id='admin@company.com', password='admin_password', role='admin')
             db.session.add(admin)
         if not User.query.get('user@company.com'):
-            print("Creating default user account...")
             user = User(id='user@company.com', password='user_password', role='user')
             db.session.add(user)
-    
-        # 기본 규칙 생성 (patterns.json -> DB)
-        if Rule.query.first() is None:
-            print("Migrating initial rules from patterns.json to database...")
-            try:
-                with open("patterns.json", "r", encoding="utf-8") as f:
-                    patterns_data = json.load(f).get("sensitive_patterns", [])
-                    for p in patterns_data:
-                        new_rule = Rule(
-                            name=p.get("name"),
-                            regex=p.get("regex"),
-                            action=p.get("action", "mask"),
-                            is_active=True 
-                        )
-                        db.session.add(new_rule)
-                print(f"Successfully migrated {len(patterns_data)} rules.")
-            except FileNotFoundError:
-                print("Warning: patterns.json not found. No initial rules were migrated.")
 
         db.session.commit()
-        print("Database initialized!")
 
     return app
 
 # ==================================================================
 # 💎 헬퍼 함수 (Helper Functions)
 # ==================================================================
-
-def luhn_ok(s: str) -> bool:
-    digits = [int(c) for c in re.sub(r"\D","", s)]
-    if not (13 <= len(digits) <= 19): return False
-    total = 0; parity = len(digits) % 2
-    for i, d in enumerate(digits):
-        if i % 2 == parity:
-            d *= 2
-            if d > 9: d -= 9
-        total += d
-    return total % 10 == 0
-
-## moved to services.policy_service
-
-## moved to services.policy_service
 
 def call_gemini_generate(
     model_id: str,
@@ -652,15 +639,6 @@ def format_counselor_response(text: str, original_input: str = "") -> str:
                 t,
                 count=1
             )
-
-    # 고정 부가 섹션 보강
-    if "## 큰 키워드" not in t:
-        t = t.rstrip() + "\n\n## 큰 키워드\n- (핵심 키워드 요약)"
-    if "** 이 멘트는 지침에 따라 자동 생성되었습니다." not in t:
-        t = t.rstrip() + "\n\n** 이 멘트는 지침에 따라 자동 생성되었습니다."
-
-    if "## 다음 단계" not in t:
-        t = t.rstrip() + "\n\n## 다음 단계\n- (다음 조치 제안)"
 
     return t
 
@@ -966,62 +944,6 @@ def create_masked_summary(text: str) -> str:
     masked = _mask_addresses(masked)
     
     return masked
-
-# Ollama를 사용해 자연어를 정규식으로 변환하는 함수
-def generate_regex_from_ollama(description: str) -> str:
-    """Ollama를 사용하여 자연어 설명으로부터 정규식을 생성합니다."""
-    from flask import current_app # 함수 내에서 current_app 임포트
-
-    # 모델이 로드되었는지 확인하는 로직 추가 (선택 사항)
-    # if not hasattr(current_app, 'OLLAMA_AVAILABLE') or not current_app.OLLAMA_AVAILABLE:
-    #    raise RuntimeError("Ollama 모델을 사용할 수 없습니다.")
-
-    # Ollama 모델에 맞는 프롬프트 (튜닝 필요!)
-    prompt = f"""당신은 Python 호환 정규식 작성 전문가입니다. 사용자의 설명을 유효한 단일 정규식 패턴으로 변환하는 것이 유일한 임무입니다.
-오직 정규식 패턴만 출력하고 다른 설명, 백틱(`), 마크다운 또는 기타 텍스트는 절대 포함하지 마세요.
-
-Description: '{description}'
-
-Regex Pattern:"""
-
-    payload = {
-        "model": OLLAMA_MODEL_FOR_REGEX, # 정규식 생성용 모델
-        "prompt": prompt,
-        # "format": "json", # 정규식은 단순 텍스트이므로 JSON 포맷 불필요
-        "stream": False,
-        "options": { "temperature": 0.0 } # 정규식 생성은 창의성보다 정확성이 중요
-    }
-
-    try:
-        resp = requests.post(OLLAMA_API_URL, json=payload, timeout=20) # 타임아웃 적절히 설정
-        resp.raise_for_status()
-
-        response_data = resp.json()
-        regex_pattern = response_data.get("response", "").strip()
-
-        # 응답에서 불필요한 부분 제거 (예: 설명, 백틱 등)
-        # 가장 흔한 패턴 위주로 제거
-        if regex_pattern.startswith('`') and regex_pattern.endswith('`'):
-            regex_pattern = regex_pattern[1:-1]
-        # 추가적인 정리 로직 필요시 여기에 구현
-
-        # 생성된 정규식이 유효한지 컴파일 시도
-        try:
-            re.compile(regex_pattern)
-            print(f"[generate_regex_from_ollama] 생성된 정규식: {regex_pattern}")
-            return regex_pattern
-        except re.error as re_err:
-            print(f"[generate_regex_from_ollama] AI가 잘못된 정규식 생성: {regex_pattern} - 오류: {re_err}")
-            raise ValueError(f"AI가 잘못된 정규식을 생성했습니다.")
-
-    except requests.exceptions.RequestException as req_err:
-        print(f"[generate_regex_from_ollama] Ollama API 요청 오류: {req_err}")
-        traceback.print_exc()
-        raise RuntimeError(f"Ollama API 호출 실패: {req_err}")
-    except Exception as e:
-        print(f"[generate_regex_from_ollama] 예상치 못한 오류: {e}")
-        traceback.print_exc()
-        raise RuntimeError(f"AI 정규식 생성 중 오류 발생: {e}")
 
 # ==================================================================
 # 💎 서버 실행
