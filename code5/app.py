@@ -327,7 +327,9 @@ def create_app():
                 sanitized_messages = messages[:]
                 sanitized_messages[last_user_idx] = {"role": "user", "content": sanitized_2}
                 # 모델 라우팅: ollama:* 은 Ollama로, 그 외는 기존 로직
+                print(f"🔍 [DEBUG] Selected model_id: {model_id}")
                 if model_id.startswith("ollama:"):
+                    print(f"🤖 [DEBUG] Using OLLAMA model: {model_id}")
                     final_system_instruction = (
                         "당신은 '금융회사 직원 보조용' AI 어시스턴트입니다.\n\n"
                         "- 금융 질문: 아래 [검색된 참고 자료]를 우선 참조하여 답변하세요. 자료에 없으면 일반 지식으로 답변 가능합니다.\n"
@@ -343,6 +345,7 @@ def create_app():
                         system_instruction=final_system_instruction
                     )
                 else:
+                    print(f"💎 [DEBUG] Using GEMINI model: {model_id}")
                     if model_id == "demo-local":
                         llm_resp = call_gemini_generate(model_id, sanitized_messages, app.GMODEL, context=context)
                     else:
