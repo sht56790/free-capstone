@@ -5,6 +5,7 @@ class User(db.Model):
     id = db.Column(db.String(100), primary_key=True)
     password = db.Column(db.String(100), nullable=False)
     role = db.Column(db.String(50), nullable=False, default='user')
+    last_login = db.Column(db.DateTime, nullable=True)
 
     # User와 Log의 관계 설정 (User 한 명이 여러 개의 Log를 가질 수 있음)
     logs = db.relationship('Log', backref='user', lazy=True)
