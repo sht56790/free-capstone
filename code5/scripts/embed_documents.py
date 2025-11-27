@@ -37,9 +37,9 @@ def load_pdf_documents() -> List:
             loader = PyPDFLoader(path)
             pages = loader.load()
             documents.extend(pages)
-            print(f"  ✓ {path} (페이지 {len(pages)})")
+            print(f"  [OK] {path} (페이지 {len(pages)})")
         except Exception as exc:  # pragma: no cover - 파일 오류 방어
-            print(f"  ⚠️ PDF 로드 실패: {path} ({exc})")
+            print(f"  [ERROR] PDF 로드 실패: {path} ({exc})")
     return documents
 
 
