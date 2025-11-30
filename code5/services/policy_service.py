@@ -31,7 +31,7 @@ def apply_patterns(text: str, rules: List[Rule]) -> Tuple[str, List[Dict[str, An
     masked = text
     findings: List[Dict[str, Any]] = []
     priority = {"block": 0, "mask": 1, "generalize": 2}
-    guard = re.compile(r"\[(PHONE|CARD|EMAIL|IP|JWT|UUID|MAC|ADDRESS|ACCOUNT|TOKEN|PASSPORT|DRIVER_LICENSE|CREDENTIAL|CUSTOMER_ID|NAME|DOB|REDACTED)\]")
+    guard = re.compile(r"\[(PHONE|CARD|EMAIL|IP|JWT|UUID|MAC|ADDRESS|ACCOUNT|TOKEN|PASSPORT|DRIVER_LICENSE|CREDENTIAL|CUSTOMER_ID|NAME|REDACTED)\]")
     
     # 패턴 이름을 라벨로 매핑하는 딕셔너리 (apply_patterns_for_output과 동일하게)
     name_to_label = {
@@ -40,7 +40,6 @@ def apply_patterns(text: str, rules: List[Rule]) -> Tuple[str, List[Dict[str, An
         "전화번호": "PHONE",
         "고객명": "NAME",
         "주소": "ADDRESS",
-        "생년월일": "DOB",
     }
 
     for p in sorted(rules, key=lambda x: priority.get(x.action, 3)):
@@ -70,7 +69,7 @@ def apply_patterns_for_output(text: str, rules: List[Rule]) -> Tuple[str, List[D
     findings: List[Dict[str, Any]] = []
     priority = {"block": 0, "mask": 1, "generalize": 2}
     # 이미 마스킹된 부분을 감지하는 guard 패턴 (라벨 형식 및 REDACTED 포함)
-    guard = re.compile(r"\[(PHONE|CARD|EMAIL|IP|JWT|UUID|MAC|ADDRESS|ACCOUNT|TOKEN|PASSPORT|DRIVER_LICENSE|CREDENTIAL|CUSTOMER_ID|NAME|DOB|REDACTED)\]")
+    guard = re.compile(r"\[(PHONE|CARD|EMAIL|IP|JWT|UUID|MAC|ADDRESS|ACCOUNT|TOKEN|PASSPORT|DRIVER_LICENSE|CREDENTIAL|CUSTOMER_ID|NAME|REDACTED)\]")
     
     # 패턴 이름을 라벨로 매핑하는 딕셔너리
     name_to_label = {
@@ -79,7 +78,6 @@ def apply_patterns_for_output(text: str, rules: List[Rule]) -> Tuple[str, List[D
         "전화번호": "PHONE",
         "고객명": "NAME",
         "주소": "ADDRESS",
-        "생년월일": "DOB",
     }
 
     for p in sorted(rules, key=lambda x: priority.get(x.action, 3)):
