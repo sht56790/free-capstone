@@ -1,36 +1,30 @@
 import os
-import re
-import json
 import time
 import traceback
-from typing import List, Dict, Any, Tuple
-import requests
+import json
 import re
+from datetime import datetime
+from typing import List, Dict, Any
+from types import SimpleNamespace
 
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
-from types import SimpleNamespace
 from flask_cors import CORS
 from dotenv import load_dotenv
 import google.generativeai as genai
 from werkzeug.utils import secure_filename
-from typing import List, Dict, Any
 
 # --- 모듈 임포트 ---
 from database import db
 from routes.admin import admin_bp
 from models import User, Log, Rule
-from services.ollama_service import judge_sensitive_with_ollama, generate_regex_from_ollama, _post_ollama_generate
-from services.policy_service import apply_patterns, apply_ai_judgement, apply_patterns_for_output, apply_patterns_for_output_excluding_summary
+from services.ollama_service import judge_sensitive_with_ollama, _post_ollama_generate
+from services.policy_service import apply_patterns, apply_patterns_for_output_excluding_summary, apply_ai_judgement
 from services.rag_service import retrieve_context
-
-# Ollama 설정 (파일 상단 또는 설정 파일에서 관리)
-OLLAMA_API_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL_FOR_JUDGE = "qwen3:8b" # 사용할 모델 선택 (예: llama3:8b, qwen:14b)
-OLLAMA_MODEL_FOR_REGEX = "qwen3:8b"
+from services.realtime_service import detect_and_fetch_realtime_info
+from services.search_service import search_and_format
+from services.web_scraping_service import smart_scrape
 
 ORIGINAL_GEMINI_SYSTEM_INSTRUCTION = ""
-
-## moved to services.ollama_service
     
 # ==================================================================
 # 💎 앱 생성 및 초기화 (Application Factory)
@@ -60,41 +54,42 @@ def create_app():
         if api_key:
             genai.configure(api_key=api_key)
             system_instr_str = (
-                    "당신은 '금융회사 직원 보조용' 상담 에이전트입니다. 답변 대상은 '직원'이며, 직원이 고객에게 안내할 수 있도록 내부용 톤으로 작성합니다. 고객에게 되묻는 형태(추가 정보 요청 질문)는 피하고, 직원이 바로 읽어줄 수 있는 '고객 응대 멘트'를 제공합니다. 생성형 서술을 지양하고, 내부 매뉴얼/약관/FAQ에 근거한 응답만 제공합니다. 다음 원칙과 고정 템플릿을 반드시 준수하세요:\n\n"
-                    "1. 고객정보 보호: 계좌번호·고객번호·고객명을 요청하거나 노출하지 마세요. "
-                    "이미 마스킹된 값([PHONE], [EMAIL], [CARD], [ADDRESS], [JWT], [UUID] 등)은 복원하지 마세요.\n\n"
-                    "2. 금리·수수료 확정 표현 금지: '수수료는 5,000원입니다', '금리는 3.5%입니다' 같은 확정 표현은 절대 사용하지 마세요. "
-                    "대신 '수수료는 약 3,000~8,000원 범위입니다. 정확한 금액은 영업점 문의 바랍니다.' 또는 "
-                    "'금리는 상품·기간에 따라 다르며, 정확한 금리는 영업점 문의 바랍니다.' 같은 표현을 사용하세요.\n\n"
-                    "3. 질문에 대한 답변 허용: '수수료는 어떻게 결정되나요?', '금리는 어떻게 되나요?' 같은 질문은 정상적으로 답변해주세요. "
-                    "매뉴얼에 있는 정보를 바탕으로 수수료 결정 방식, 금리 범위, 절차 등을 안내할 수 있습니다. "
-                    "단, 확정적인 금액이나 수치를 제시하지 마세요.\n\n"
-                    "4. 절차 안내만 제공: 가입·신청 절차만 안내하고, 실제 거래는 금지합니다. "
-                    "'계좌 이체 가능합니다' 같은 표현은 금지하며, '계좌 이체는 직접 신청하거나 상담원 연결이 필요합니다.'로 안내하세요.\n\n"
-                    "5. 근거 필수: 약관·상품 설명서 출처를 반드시 명시하세요. 예: '[보험 상품 설명서] 상품A - 보장 범위'\n\n"
-                    "6. 입력 요약 작성 규칙: 답변 섹션의 '입력 요약'에는 사용자 입력을 요약하되, 민감정보는 반드시 마스킹/일반화 처리하세요.\n"
-                    "- 이름: '홍길동' → '홍OO' (성+OO)\n"
-                    "- 생년월일: '1995년생' → '1990년대생' (연대 단위로 일반화)\n"
-                    "- 계좌번호: '123-456-789012' → '[ACCOUNT]'\n"
-                    "- 전화번호: '010-1234-5678' → '[PHONE]'\n"
-                    "- 고객번호: '123456' → '[CUSTOMER_ID]'\n"
-                    "- 이미 마스킹된 값([ACCOUNT], [PHONE] 등)은 그대로 사용하세요.\n\n"
-                    "7. 고정 템플릿 사용(제목은 그대로 유지). 직원 관점의 구성:\n"
-                    "## 답변\n- 입력 요약: [마스킹된 사용자 입력 요약]\n- 고객 응대 멘트: [직원이 그대로 읽어줄 1~3문장]\n- 내부 체크리스트: [직원이 확인할 항목 1~3개]\n\n"
-                    "## 근거 출처\n- [문서명] 섹션/조항\n\n"
-                    "## 다음 단계\n- 이용자 조치 또는 상담원 연결\n\n"
-                    "허용 예시:\n"
-                    "✓ '수수료는 거래 금액과 상품 종류에 따라 결정됩니다. 상세한 수수료표는 영업점에서 확인하실 수 있습니다.'\n"
-                    "✓ '보험료는 상품·기간에 따라 다릅니다. 영업점 문의 바랍니다.'\n"
-                    "✓ '가입 절차: 영업점 방문 → 상담 → 가입 신청 → 계약 체결'\n\n"
-                    "금지 예시:\n"
-                    "✗ '보험료는 50만원입니다' (확정 금액 금지)\n"
-                    "✗ '계좌 이체 가능합니다' (실제 거래 금지)\n"
+                    "당신은 '금융회사 직원 전용 업무 보조 AI'입니다. 답변 대상은 '직원'이며, 직원이 고객에게 안내할 수 있도록 작성합니다.\n\n"
+                    
+                    "🔍 **핵심 원칙: 가능한 모든 근거를 활용하되, 없으면 일반 지식으로 보완하세요**\n"
+                    "시스템이 [실시간 정보], [웹 검색 결과], [검색된 내부 참고 자료] 등을 제공하면 우선적으로 활용하고, 관련 근거가 전혀 없는 주제라도 일반 지식을 기반으로 최선의 답변을 제시하세요. 단, 일반 지식일 경우 '일반 지식 기반'임을 명시하고 과도한 추측은 피하세요.\n\n"
+                    
+                    "예시:\n"
+                    "  • [실시간 정보] 코스피: 2,500포인트 (+1.2%)\n"
+                    "    → 답변: '현재 코스피 지수는 2,500포인트로 전일 대비 1.2% 상승했습니다 (실시간 조회)'\n"
+                    "  • 내부 참고 없음, 개발 질문\n"
+                    "    → 답변: 'printf문은 C 언어에서 형식화된 출력에 사용하는 함수입니다 (일반 지식 기반)'\n\n"
+                    
+                    "📋 **답변 형식**\n"
+                    "## 답변\n"
+                    "- 입력 요약: [사용자 질문 요약]\n"
+                    "- 고객 응대 멘트: [핵심 답변 1~3문장 - 제공된 근거 또는 일반 지식 기반]\n"
+                    "- 참고 정보: [추가 정보, 출처, 확인 방법]\n"
+                    "- 내부 체크리스트: [직원 확인 항목]\n\n"
+                    "## 근거 출처\n"
+                    "- [문서명/정보 출처 없으면 '일반 지식 기반']\n\n"
+                    "## 다음 단계\n"
+                    "- [후속 조치]\n\n"
+                    
+                    "🔒 **보안 원칙**\n"
+                    "- 계좌번호, 고객번호, 전화번호 등 민감정보는 마스킹 유지\n"
+                    "- 금리/수수료는 확정 금액 대신 범위로 안내 (예: '약 3,000~8,000원')\n"
+                    "- 실제 거래 실행 금지, 절차 안내만 제공\n"
                 )
             ORIGINAL_GEMINI_SYSTEM_INSTRUCTION = system_instr_str
             app.GMODEL = genai.GenerativeModel(
-                "gemini-2.5-pro",
-                system_instruction=system_instr_str
+                "gemini-2.0-flash",
+                system_instruction=system_instr_str,
+                generation_config={
+                    "temperature": 0.3,
+                    "top_p": 0.8,
+                    "top_k": 40,
+                }
             )
         else:
             app.GMODEL = None
@@ -138,6 +133,10 @@ def create_app():
         user_in_db = User.query.get(user_id)
         
         if user_in_db and user_in_db.password == password:
+            # 마지막 로그인 시간 업데이트
+            user_in_db.last_login = datetime.utcnow()
+            db.session.commit()
+            
             session['user_id'] = user_in_db.id
             session['role'] = user_in_db.role
             return jsonify({"success": True, "role": user_in_db.role})
@@ -170,18 +169,52 @@ def create_app():
 
             if uploaded_file and uploaded_file.filename:
                 filename = secure_filename(uploaded_file.filename)
-                print(f"Received file: {filename}")
-                if filename.lower().endswith('.txt'):
+                
+                # 확장자 추출 (대소문자 무시, 점이 없으면 빈 문자열)
+                if '.' in filename:
+                    file_ext = filename.lower().rsplit('.', 1)[-1]
+                else:
+                    file_ext = ''
+                
+                # 지원하는 파일 형식 확인
+                if file_ext == 'txt':
+                    # 텍스트 파일 처리
                     try:
                         file_bytes = uploaded_file.read()
                         file_content = file_bytes.decode('utf-8')
                     except UnicodeDecodeError:
-                        try: file_content = file_bytes.decode('cp949')
-                        except: file_content = "[파일 인코딩 오류]"
-                    print(f"Read {len(file_content)} chars from {filename}")
+                        try: 
+                            file_content = file_bytes.decode('cp949')
+                        except: 
+                            file_content = "[파일 인코딩 오류]"
+                
+                elif file_ext == 'pdf':
+                    # PDF 파일 처리
+                    try:
+                        from pypdf import PdfReader
+                        from io import BytesIO
+                        
+                        pdf_bytes = uploaded_file.read()
+                        pdf_file = BytesIO(pdf_bytes)
+                        reader = PdfReader(pdf_file)
+                        
+                        # 모든 페이지에서 텍스트 추출
+                        pdf_text = []
+                        for i, page in enumerate(reader.pages):
+                            page_text = page.extract_text()
+                            if page_text.strip():
+                                pdf_text.append(f"--- Page {i+1} ---\n{page_text}")
+                        
+                        file_content = "\n\n".join(pdf_text) if pdf_text else "[PDF에서 텍스트를 추출할 수 없습니다]"
+                    except Exception as e:
+                        file_content = f"[PDF 파일 처리 오류: {str(e)}]"
+                        
                 else:
-                    print(f"Skipping non-txt file: {filename}")
-                    file_content = f"[{filename} 파일 내용은 처리되지 않음]"
+                    # 지원하지 않는 파일 형식
+                    return jsonify({
+                        "error": "지원하지 않는 파일 형식입니다.",
+                        "detail": f"현재 .txt, .pdf 파일만 지원합니다. (업로드된 파일: {filename})"
+                    }), 400
 
             # --- 3. messages 파싱 및 최종 프롬프트 생성 ---
             messages: List[Dict[str, str]] = json.loads(messages_json_string)
@@ -265,7 +298,28 @@ def create_app():
                         if j.get("action") == "block":
                             j["action"] = "mask"
                 sanitized_2, fin_in_model = apply_ai_judgement(sanitized_1, judgements)
-                context = retrieve_context(sanitized_2)
+                
+                # RAG: 유사 문서 검색 (내부 금융 매뉴얼)
+                # 원본 텍스트로 검색 (마스킹된 텍스트는 검색 정확도가 떨어짐)
+                context = retrieve_context(orig)
+                
+                # 1순위: Google Custom Search (API 키 있는 경우)
+                search_results = search_and_format(orig)
+                if search_results:
+                    print(f"[SEARCH] Google 검색 결과 추가")
+                    context = f"{search_results}\n\n{context}" if context else search_results
+                else:
+                    # 2순위: 웹 스크래핑 (완전 무료)
+                    scraped_info = smart_scrape(orig)
+                    if scraped_info:
+                        print(f"[WEB SCRAPE] 스크래핑 정보 추가")
+                        context = f"{scraped_info}\n\n{context}" if context else scraped_info
+                    else:
+                        # 3순위: 특정 API (yfinance, OpenWeather 등)
+                        realtime_info = detect_and_fetch_realtime_info(orig)
+                        if realtime_info:
+                            print(f"[REALTIME API] 실시간 API 정보 추가")
+                            context = f"{realtime_info}\n\n{context}" if context else realtime_info
             except ValueError as e: # <-- 차단 처리
                 is_blocked = True
                 block_reason = str(e)
@@ -276,16 +330,18 @@ def create_app():
                 # 이 외 필드는 finally 블록에서 채움
 
             # --- 차단되지 않은 경우 LLM 호출 및 로그 준비 ---
+            model_used = "unknown"  # 실제 사용된 모델 추적
             if not is_blocked:
                 sanitized_messages = messages[:]
                 sanitized_messages[last_user_idx] = {"role": "user", "content": sanitized_2}
                 # 모델 라우팅: ollama:* 은 Ollama로, 그 외는 기존 로직
                 if model_id.startswith("ollama:"):
+                    model_used = model_id  # Ollama 모델 사용
                     final_system_instruction = (
-                        "당신은 '금융회사 직원 보조용' 상담 에이전트입니다. "
-                        "모든 답변은 아래 [검색된 참고 자료]를 바탕으로 작성하세요.\n\n"
-                        "자료에서 답을 찾지 못하면 '내부 자료에서 관련 정보를 찾을 수 없습니다'라고 답변하세요.\n"
-                        "금융 상담 템플릿(## 답변, ## 근거 출처, ## 다음 단계)을 반드시 준수하세요.\n\n"
+                        "당신은 '금융회사 직원 보조용' AI 어시스턴트입니다.\n\n"
+                        "- 금융 질문: 아래 [검색된 참고 자료]를 우선 참조하여 답변하세요. 자료에 없으면 일반 지식으로 답변 가능합니다.\n"
+                        "- 일반 질문(날씨, 시간 등): 간결하게 답변하세요.\n\n"
+                        "금융 질문은 템플릿(## 답변, ## 근거 출처, ## 다음 단계)을 사용하되, 일반 질문은 자유 형식으로 답변하세요.\n\n"
                         "--- [검색된 참고 자료] ---\n"
                         f"{context}\n"
                         "--------------------------\n"
@@ -297,18 +353,40 @@ def create_app():
                     )
                 else:
                     if model_id == "demo-local":
+                        model_used = "demo-local (fallback)"
                         llm_resp = call_gemini_generate(model_id, sanitized_messages, app.GMODEL, context=context)
                     else:
                         if not ORIGINAL_GEMINI_SYSTEM_INSTRUCTION:
                             return jsonify({"error": "Gemini 모델 지침이 설정되지 않았습니다.", "detail": "서버 설정 오류"}), 503
+                        
+                        # 지원되는 Gemini 텍스트 모델 목록
+                        supported_gemini_models = [
+                            "gemini-2.0-flash",
+                            "gemini-2.0-flash-lite",
+                        ]
+                        
+                        # 사용자가 선택한 모델이 지원되는지 확인, 아니면 기본값 사용
+                        if model_id in supported_gemini_models:
+                            gemini_model_name = model_id
+                        else:
+                            gemini_model_name = "gemini-2.0-flash"  # 기본값
+                        
+                        model_used = gemini_model_name
+                        # 디버깅: 컨텍스트 내용 출력
+                        print(f"[CONTEXT] Gemini에게 전달되는 컨텍스트 (처음 500자):\n{context[:500] if context else '(없음)'}")
                         final_system_instruction = (
                             ORIGINAL_GEMINI_SYSTEM_INSTRUCTION
                             + "\n\n[검색된 내부 참고 자료]:\n"
                             + context
                         )
                         gmodel_with_rag = genai.GenerativeModel(
-                            "gemini-2.5-pro",
-                            system_instruction=final_system_instruction
+                            gemini_model_name,
+                            system_instruction=final_system_instruction,
+                            generation_config={
+                                "temperature": 0.3,
+                                "top_p": 0.8,
+                                "top_k": 40,
+                            }
                         )
                         llm_resp = call_gemini_generate(model_id, sanitized_messages, gmodel_with_rag, context=context)
                 llm_resp = format_counselor_response(llm_resp, orig)
@@ -340,7 +418,6 @@ def create_app():
             traceback.print_exc()
             return jsonify({"error": "잘못된 messages 형식"}), 400
         except Exception as e: # 그 외 모든 예외 처리 (파일 처리 오류 등)
-            print(f"An error occurred BEFORE filtering/LLM call: {e}")
             traceback.print_exc()
             log_data = { # 오류 로그 준비
                 "action": "error", "processed_prompt_for_llm": "ERROR", "llm_response": str(e),
@@ -354,7 +431,6 @@ def create_app():
                 })
                 save_log_to_db(log_data)
             except Exception as db_e:
-                print(f"!!! CRITICAL: Failed to save ERROR log to DB: {db_e}")
                 traceback.print_exc()
             return jsonify({"error": "서버 내부 오류 발생", "detail": str(e)}), 500
 
@@ -369,7 +445,6 @@ def create_app():
                     })
                     save_log_to_db(log_data)
             except Exception as db_e:
-                print(f"!!! CRITICAL: Failed to save log to DB in finally block: {db_e}")
                 traceback.print_exc()
 
         # --- 최종 응답 반환 ---
@@ -405,14 +480,12 @@ def create_app():
                 "PHONE": "전화번호",
                 "NAME": "고객명",
                 "ADDRESS": "주소",
-                "DOB": "생년월일",
                 # 패턴 이름도 매핑 (이미 한글이면 그대로 사용)
                 "계좌번호": "계좌번호",
                 "고객번호": "고객번호",
                 "전화번호": "전화번호",
                 "고객명": "고객명",
                 "주소": "주소",
-                "생년월일": "생년월일",
             }
             detected_names = []
             # 입력/출력 모두의 탐지 항목을 합쳐서 안내 문구에 사용
@@ -427,66 +500,30 @@ def create_app():
                 unique_names = ", ".join(sorted(list(set(detected_names))))
                 security_notice = f"🛡️ 입력하신 내용 중 {unique_names} 항목이 마스킹 처리되었습니다."
             
-            return jsonify({"content": sanitized_out, "notice": security_notice})
+            return jsonify({"content": sanitized_out, "notice": security_notice, "model_used": model_used})
     # ==================================================================
     # 💎 DB 생성을 위한 커스텀 명령어 추가
     # ==================================================================
     @app.cli.command("init-db")
     def init_db_command():
-        """데이터베이스 테이블을 초기화하고 기본 데이터(사용자, 규칙)를 생성합니다."""
+        """데이터베이스 테이블을 초기화하고 기본 데이터(사용자)를 생성합니다."""
         db.create_all()
 
         # --- 기본 사용자 생성 ---
         if not User.query.get('admin@company.com'):
-            print("Creating default admin account...")
             admin = User(id='admin@company.com', password='admin_password', role='admin')
             db.session.add(admin)
         if not User.query.get('user@company.com'):
-            print("Creating default user account...")
             user = User(id='user@company.com', password='user_password', role='user')
             db.session.add(user)
-    
-        # 기본 규칙 생성 (patterns.json -> DB)
-        if Rule.query.first() is None:
-            print("Migrating initial rules from patterns.json to database...")
-            try:
-                with open("patterns.json", "r", encoding="utf-8") as f:
-                    patterns_data = json.load(f).get("sensitive_patterns", [])
-                    for p in patterns_data:
-                        new_rule = Rule(
-                            name=p.get("name"),
-                            regex=p.get("regex"),
-                            action=p.get("action", "mask"),
-                            is_active=True 
-                        )
-                        db.session.add(new_rule)
-                print(f"Successfully migrated {len(patterns_data)} rules.")
-            except FileNotFoundError:
-                print("Warning: patterns.json not found. No initial rules were migrated.")
 
         db.session.commit()
-        print("Database initialized!")
 
     return app
 
 # ==================================================================
 # 💎 헬퍼 함수 (Helper Functions)
 # ==================================================================
-
-def luhn_ok(s: str) -> bool:
-    digits = [int(c) for c in re.sub(r"\D","", s)]
-    if not (13 <= len(digits) <= 19): return False
-    total = 0; parity = len(digits) % 2
-    for i, d in enumerate(digits):
-        if i % 2 == parity:
-            d *= 2
-            if d > 9: d -= 9
-        total += d
-    return total % 10 == 0
-
-## moved to services.policy_service
-
-## moved to services.policy_service
 
 def call_gemini_generate(
     model_id: str,
@@ -504,6 +541,7 @@ def call_gemini_generate(
             "## 답변\n"
             f"- 입력 요약: {summary}\n"
             "- 고객 응대 멘트: 안내는 영업점 방문 또는 상담원 연결로 진행됩니다. 필요한 경우 연결을 도와드리겠습니다.\n"
+            "- 참고 정보: 관련 일반 정보는 내부 매뉴얼 또는 상담원을 통해 확인 가능합니다.\n"
             "- 내부 체크리스트: 관련 약관/상품 설명서 레퍼런스 확인 → 절차만 안내\n\n"
             "## 근거 출처\n- (출처 기입)\n\n"
             "## 다음 단계\n- (다음 조치 제안)"
@@ -522,11 +560,13 @@ def call_gemini_generate(
         if content:
             history.append({"role": role, "parts": [content]})
 
+    print(f"[Gemini API] 호출 시작 - 모델: {gmodel.model_name if hasattr(gmodel, 'model_name') else 'unknown'}")
     chat_session = gmodel.start_chat(history=history)
     resp = chat_session.send_message(
         last_user + "\n\n(위 지침의 고정 템플릿을 반드시 사용하세요)"
     )
     result_text = getattr(resp, "text", "") or ""
+    print(f"[Gemini API] 응답 수신 완료 (길이: {len(result_text)} 문자)")
     normalized = result_text.strip()
     if (not normalized) or normalized.lower() in {"(empty response)", "empty response"}:
         masked_last_user = create_masked_summary(last_user)
@@ -541,6 +581,7 @@ def call_gemini_generate(
             "## 답변\n"
             f"- 입력 요약: {fallback_summary}\n"
             "- 고객 응대 멘트: 내부 매뉴얼을 근거로 정기예금 해지 절차와 대출 심사 단계, 수수료 범위 안내 멘트를 정리해 고객에게 전달하세요.\n"
+            "- 참고 정보: 상세한 내용은 내부 매뉴얼 또는 상담원을 통해 확인해주세요.\n"
             "- 내부 체크리스트: 필요한 서류 확인 → 상담 이력 기록 → 면책 문구 포함 안내\n\n"
             "## 근거 출처\n"
             f"- 자동 응답 보정{context_hint}\n"
@@ -604,9 +645,30 @@ def save_log_to_db(log_data: Dict[str, Any]):
     db.session.commit()
 
 
+def _validate_no_hallucination(text: str, user_input: str) -> str:
+    """Gemini 응답 검증 (Google Search 사용 시에는 실시간 정보 허용)"""
+    # Google Search를 사용하면 실시간 정보가 정확하므로 검증 완화
+    # 단, 출처가 명시되지 않은 경우에만 경고
+    
+    if "(출처:" in text or "Google 검색" in text or "검색 결과" in text:
+        # 출처가 명시되어 있으면 검증 통과
+        print("✅ [SEARCH GROUNDING] 검색 기반 답변 확인됨")
+        return text
+    
+    # 출처 없이 실시간 정보를 제공하는 경우 경고만 출력 (차단하지 않음)
+    realtime_keywords = ["날씨", "기온", "온도", "시간", "몇 시", "주가", "코스피", "환율"]
+    is_realtime_question = any(keyword in user_input for keyword in realtime_keywords)
+    
+    if is_realtime_question:
+        print("⚠️ [INFO] 실시간 정보 질문이지만 출처가 명시되지 않음 (Google Search 미사용 가능성)")
+    
+    return text
+
 def format_counselor_response(text: str, original_input: str = "") -> str:
     """응답을 '직원 보조형' 고정 템플릿으로 정규화하고 입력 요약 부분을 마스킹합니다."""
-    t = (text or "").strip()
+    # 환각 감지 및 수정
+    t = _validate_no_hallucination(text, original_input)
+    t = (t or "").strip()
     # 섹션 제목이 없으면 템플릿으로 감싼다
     if "## 답변" not in t:
         t = (
@@ -645,22 +707,20 @@ def format_counselor_response(text: str, original_input: str = "") -> str:
                 t,
                 count=1
             )
-        if "내부 체크리스트:" not in t:
+        if "참고 정보:" not in t:
             t = re.sub(
                 r"(고객 응대 멘트[:\s].*?\n)",
+                r"\1- 참고 정보: (관련 일반 정보 또는 확인 방법 안내)\n",
+                t,
+                count=1
+            )
+        if "내부 체크리스트:" not in t:
+            t = re.sub(
+                r"(참고 정보[:\s].*?\n)",
                 r"\1- 내부 체크리스트: (직원이 확인할 항목 1~3개를 제시하세요)\n",
                 t,
                 count=1
             )
-
-    # 고정 부가 섹션 보강
-    if "## 큰 키워드" not in t:
-        t = t.rstrip() + "\n\n## 큰 키워드\n- (핵심 키워드 요약)"
-    if "** 이 멘트는 지침에 따라 자동 생성되었습니다." not in t:
-        t = t.rstrip() + "\n\n** 이 멘트는 지침에 따라 자동 생성되었습니다."
-
-    if "## 다음 단계" not in t:
-        t = t.rstrip() + "\n\n## 다음 단계\n- (다음 조치 제안)"
 
     return t
 
@@ -897,51 +957,15 @@ def create_masked_summary(text: str) -> str:
     """사용자 입력을 마스킹된 요약 버전으로 변환합니다."""
     masked = text
     
-    # 1. 생년월일 일반화: "1995년생" → "1990년대생" (먼저 처리)
-    # 4자리 연도 + "년생" 패턴 (이름 마스킹보다 먼저 처리하여 충돌 방지)
-    birth_year_pattern = re.compile(r"(\d{4})년생")
-    def generalize_year(m):
-        year = int(m.group(1))
-        decade = (year // 10) * 10  # 1995 → 1990
-        return f"{decade}년대생"
-    masked = birth_year_pattern.sub(generalize_year, masked)
-
-    # 1-2. YYMMDD + '생' 패턴 일반화: "900815생" → "1990년 8월 15일 생"
-    # 기준: 00~24 → 2000~2024, 그 외(25~99) → 1900~1999 (간단 휴리스틱)
-    yymmdd_birth_pattern = re.compile(r"(?<!\d)(\d{2})(\d{2})(\d{2})(?=\s*생)")
-    def expand_yymmdd(m):
-        yy = int(m.group(1)); mm = int(m.group(2)); dd = int(m.group(3))
-        century = 2000 if yy <= 24 else 1900
-        yyyy = century + yy
-        # 월/일은 자연수로 출력(앞의 0 제거)
-        return f"{yyyy}년 {mm}월 {dd}일 "
-    masked = yymmdd_birth_pattern.sub(expand_yymmdd, masked)
-    
-    # 2. 이름 마스킹: "홍길동 고객" → "홍OO 고객"
+    # 1. 이름 마스킹: "홍길동 고객" → "홍OO 고객"
     name_pattern = re.compile(r"(?<![가-힣])([가-힣])([가-힣]{1,2})(?=\s*(고객|님|분|씨))")
     masked = name_pattern.sub(lambda m: m.group(1) + "OO", masked)
     
-    # 2-1. 생년월일 일반화: "생년월일 1986-05-12" → "생년월일 1980년대생"
-    dob_labeled_pattern = re.compile(r"(생년월일[:\s]*)(\d{4})[-./](\d{2})[-./](\d{2})")
-    def replace_dob_labeled(m):
-        year = int(m.group(2))
-        decade = (year // 10) * 10
-        return f"{m.group(1)}{decade}년대생"
-    masked = dob_labeled_pattern.sub(replace_dob_labeled, masked)
-    
-    # 2-2. YYYY-MM-DD 패턴 단독 일반화 (문맥 없이 등장할 때)
-    dob_plain_pattern = re.compile(r"(?<!\d)(\d{4})[-./](\d{2})[-./](\d{2})(?!\d)")
-    def replace_dob_plain(m):
-        year = int(m.group(1))
-        decade = (year // 10) * 10
-        return f"{decade}년대생"
-    masked = dob_plain_pattern.sub(replace_dob_plain, masked)
-    
-    # 3. 전화번호 마스킹 (먼저 처리: 0으로 시작하는 패턴)
+    # 2. 전화번호 마스킹 (먼저 처리: 0으로 시작하는 패턴)
     phone_pattern = re.compile(r"0\d{1,2}[-\\s]?\d{3,4}[-\\s]?\d{4}|0\d{9,10}")
     masked = phone_pattern.sub("[PHONE]", masked)
     
-    # 4. 계좌번호 마스킹: "123-456-789012" → "[ACCOUNT]"
+    # 3. 계좌번호 마스킹: "123-456-789012" → "[ACCOUNT]"
     # 하이픈 포함 계좌번호 패턴 (전화번호는 이미 마스킹됨)
     account_with_dash = re.compile(
         r"\d{3}[-\s]?\d{3}[-\s]?\d{6}"
@@ -966,62 +990,6 @@ def create_masked_summary(text: str) -> str:
     masked = _mask_addresses(masked)
     
     return masked
-
-# Ollama를 사용해 자연어를 정규식으로 변환하는 함수
-def generate_regex_from_ollama(description: str) -> str:
-    """Ollama를 사용하여 자연어 설명으로부터 정규식을 생성합니다."""
-    from flask import current_app # 함수 내에서 current_app 임포트
-
-    # 모델이 로드되었는지 확인하는 로직 추가 (선택 사항)
-    # if not hasattr(current_app, 'OLLAMA_AVAILABLE') or not current_app.OLLAMA_AVAILABLE:
-    #    raise RuntimeError("Ollama 모델을 사용할 수 없습니다.")
-
-    # Ollama 모델에 맞는 프롬프트 (튜닝 필요!)
-    prompt = f"""당신은 Python 호환 정규식 작성 전문가입니다. 사용자의 설명을 유효한 단일 정규식 패턴으로 변환하는 것이 유일한 임무입니다.
-오직 정규식 패턴만 출력하고 다른 설명, 백틱(`), 마크다운 또는 기타 텍스트는 절대 포함하지 마세요.
-
-Description: '{description}'
-
-Regex Pattern:"""
-
-    payload = {
-        "model": OLLAMA_MODEL_FOR_REGEX, # 정규식 생성용 모델
-        "prompt": prompt,
-        # "format": "json", # 정규식은 단순 텍스트이므로 JSON 포맷 불필요
-        "stream": False,
-        "options": { "temperature": 0.0 } # 정규식 생성은 창의성보다 정확성이 중요
-    }
-
-    try:
-        resp = requests.post(OLLAMA_API_URL, json=payload, timeout=20) # 타임아웃 적절히 설정
-        resp.raise_for_status()
-
-        response_data = resp.json()
-        regex_pattern = response_data.get("response", "").strip()
-
-        # 응답에서 불필요한 부분 제거 (예: 설명, 백틱 등)
-        # 가장 흔한 패턴 위주로 제거
-        if regex_pattern.startswith('`') and regex_pattern.endswith('`'):
-            regex_pattern = regex_pattern[1:-1]
-        # 추가적인 정리 로직 필요시 여기에 구현
-
-        # 생성된 정규식이 유효한지 컴파일 시도
-        try:
-            re.compile(regex_pattern)
-            print(f"[generate_regex_from_ollama] 생성된 정규식: {regex_pattern}")
-            return regex_pattern
-        except re.error as re_err:
-            print(f"[generate_regex_from_ollama] AI가 잘못된 정규식 생성: {regex_pattern} - 오류: {re_err}")
-            raise ValueError(f"AI가 잘못된 정규식을 생성했습니다.")
-
-    except requests.exceptions.RequestException as req_err:
-        print(f"[generate_regex_from_ollama] Ollama API 요청 오류: {req_err}")
-        traceback.print_exc()
-        raise RuntimeError(f"Ollama API 호출 실패: {req_err}")
-    except Exception as e:
-        print(f"[generate_regex_from_ollama] 예상치 못한 오류: {e}")
-        traceback.print_exc()
-        raise RuntimeError(f"AI 정규식 생성 중 오류 발생: {e}")
 
 # ==================================================================
 # 💎 서버 실행

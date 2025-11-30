@@ -37,17 +37,61 @@ def load_pdf_documents() -> List:
             loader = PyPDFLoader(path)
             pages = loader.load()
             documents.extend(pages)
-            print(f"  ✓ {path} (페이지 {len(pages)})")
+            print(f"  [OK] {path} (페이지 {len(pages)})")
         except Exception as exc:  # pragma: no cover - 파일 오류 방어
-            print(f"  ⚠️ PDF 로드 실패: {path} ({exc})")
+            print(f"  [ERROR] PDF 로드 실패: {path} ({exc})")
     return documents
+
+
+def safe_remove_directory(dir_path: str) -> bool:
+    """디렉토리를 안전하게 제거합니다. (파일 잠금 시 이름 변경)"""
+    import shutil
+    
+    if not os.path.exists(dir_path):
+        print(f"[embed_documents] 제거할 디렉토리가 없습니다: {dir_path}")
+        return True
+    
+    try:
+        # 먼저 삭제 시도
+        shutil.rmtree(dir_path)
+        print(f"[embed_documents] 디렉토리 삭제 완료: {dir_path}")
+        return True
+    except (PermissionError, OSError) as e:
+        # 삭제 실패 시 이름 변경 (파일 잠금 우회)
+        print(f"[embed_documents] 삭제 실패 (파일 사용 중): {e}")
+        print(f"[embed_documents] 대체 방법: 기존 디렉토리 이름 변경")
+        
+        try:
+            # 타임스탬프로 백업 이름 생성
+            import datetime
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_path = f"{dir_path}_old_{timestamp}"
+            
+            os.rename(dir_path, backup_path)
+            print(f"[embed_documents] 기존 디렉토리 이름 변경: {backup_path}")
+            print(f"[embed_documents] 서버 재시작 후 수동으로 삭제 가능합니다.")
+            return True
+        except Exception as rename_err:
+            print(f"[embed_documents] 이름 변경도 실패: {rename_err}")
+            print(f"[embed_documents] 경고: 서버를 재시작해야 할 수 있습니다.")
+            return False
 
 
 def build_vector_db() -> None:
     start_total = time.time()
     documents = load_pdf_documents()
+    
     if not documents:
-        print("[embed_documents] 로드된 문서가 없어 종료합니다.")
+        print("[embed_documents] 로드된 문서가 없습니다.")
+        # 기존 vector_db 제거
+        if os.path.exists(DB_DIR):
+            print(f"[embed_documents] 기존 Vector DB 제거 시도: {DB_DIR}")
+            if safe_remove_directory(DB_DIR):
+                print("[embed_documents] 기존 Vector DB가 제거되었습니다.")
+            else:
+                print("[embed_documents] 기존 Vector DB 제거 실패 (이름 변경 또는 서버 재시작 필요)")
+        else:
+            print("[embed_documents] 제거할 Vector DB가 없습니다.")
         return
 
     print(f"[embed_documents] 총 {len(documents)}개 페이지 로드 완료")
@@ -64,7 +108,14 @@ def build_vector_db() -> None:
     )
     print(f"[embed_documents] 임베딩 모델 '{EMBED_MODEL}' 로드 완료 (device={device})")
 
+    # 기존 DB 제거 후 새로 생성
+    if os.path.exists(DB_DIR):
+        print(f"[embed_documents] 기존 Vector DB 제거 시도: {DB_DIR}")
+        safe_remove_directory(DB_DIR)
+    
     os.makedirs(DB_DIR, exist_ok=True)
+    print(f"[embed_documents] 새 Vector DB 디렉토리 생성: {DB_DIR}")
+    
     vector_db = Chroma.from_documents(chunks, embedding=embeddings, persist_directory=DB_DIR)
     vector_db.persist()
     print(f"[embed_documents] Vector DB 생성 완료 → {DB_DIR}")

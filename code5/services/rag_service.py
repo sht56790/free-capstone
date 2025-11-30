@@ -57,9 +57,34 @@ def get_vector_db() -> Optional[Chroma]:
     return _db
 
 
+def reset_vector_db() -> None:
+    """Vector DB 캐시를 초기화한다. (문서 삭제/재구축 후 호출)"""
+    global _db
+    if _db is not None:
+        try:
+            # ChromaDB 연결 정리 시도
+            _db = None
+            _log("Vector DB 캐시가 초기화되었습니다.")
+            # GC 강제 실행으로 파일 핸들 해제
+            import gc
+            gc.collect()
+            _log("가비지 컬렉션 완료 (파일 핸들 해제)")
+        except Exception as e:
+            _log(f"Vector DB 정리 중 경고: {e}")
+            _db = None
+    else:
+        _db = None
+        _log("Vector DB 캐시가 초기화되었습니다.")
+
+
 def retrieve_context(question: str, k: int = 3) -> str:
     """질의에 맞는 상위 k개 컨텍스트를 검색하여 문자열로 반환한다."""
     try:
+        # vector_db 폴더가 없으면 즉시 반환
+        if not os.path.exists(DB_DIR):
+            _log(f"[경고] Vector DB 폴더가 없습니다: {DB_DIR}")
+            return "참고: 내부 문서가 아직 준비되지 않았습니다. 문서를 업로드하고 RAG를 재구축해주세요."
+        
         db = get_vector_db()
         if db is None:
             return "참고: Vector DB가 로드되지 않아 내부 문서를 참조할 수 없습니다."
