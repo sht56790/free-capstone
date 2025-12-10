@@ -38,8 +38,8 @@ def test_rag_gemini():
         
         # 3. RAG로 관련 문서 검색
         print("🔍 [1단계] 벡터 DB에서 관련 문서 검색 중...")
-        context = retrieve_context(question, k=3)
-        print(f"검색 결과:\n{context[:300]}...\n")
+        context, score = retrieve_context(question, k=3)
+        print(f"검색 결과 (유사도: {score:.3f}):\n{context[:300]}...\n")
         
         # 4. Gemini에게 질문 (RAG 컨텍스트 포함)
         print("🤖 [2단계] Gemini에게 답변 요청 중...")

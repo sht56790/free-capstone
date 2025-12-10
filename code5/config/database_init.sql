@@ -32,9 +32,9 @@ VALUES ('고객번호', '고객번호[:\\s]?\d{6,12}|\d{6,12}(?=\s*고객)', 'bl
 INSERT OR IGNORE INTO rule (name, regex, action, is_active) 
 VALUES ('고객명', '[가-힣]{2,4}(?=\s*(님|고객|분|씨))|[가-힣]{2,4}(?=\s*계좌)|성명[:\\s]*[가-힣]{2,4}', 'mask', 1);
 
--- 생년월일 (Block)
+-- 생년월일 (Mask) - 차단 사유에 나타나지 않고 마스킹만 적용
 INSERT OR IGNORE INTO rule (name, regex, action, is_active) 
-VALUES ('생년월일', '\d{4}[-.\s]?\d{2}[-.\s]?\d{2}|\d{6}(?=\s*생년)|생년월일[:\\s]*\d{4}[-.\s]?\d{2}[-.\s]?\d{2}', 'block', 1);
+VALUES ('생년월일', '\d{4}[-.\s]?\d{2}[-.\s]?\d{2}|\d{6}(?=\s*생년)|생년월일[:\\s]*\d{4}[-.\s]?\d{2}[-.\s]?\d{2}', 'mask', 1);
 
 -- 전화번호 (Block)
 INSERT OR IGNORE INTO rule (name, regex, action, is_active) 

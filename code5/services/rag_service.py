@@ -8,7 +8,7 @@ from __future__ import annotations
 import os
 import time
 import traceback
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
@@ -57,32 +57,69 @@ def get_vector_db() -> Optional[Chroma]:
     return _db
 
 
-def retrieve_context(question: str, k: int = 3) -> str:
-    """질의에 맞는 상위 k개 컨텍스트를 검색하여 문자열로 반환한다."""
+def reset_vector_db() -> None:
+    """Vector DB 캐시를 초기화한다. (문서 삭제/재구축 후 호출)"""
+    global _db
+    if _db is not None:
+        try:
+            # ChromaDB 연결 정리 시도
+            _db = None
+            _log("Vector DB 캐시가 초기화되었습니다.")
+            # GC 강제 실행으로 파일 핸들 해제
+            import gc
+            gc.collect()
+            _log("가비지 컬렉션 완료 (파일 핸들 해제)")
+        except Exception as e:
+            _log(f"Vector DB 정리 중 경고: {e}")
+            _db = None
+    else:
+        _db = None
+        _log("Vector DB 캐시가 초기화되었습니다.")
+
+
+def retrieve_context(question: str, k: int = 3) -> Tuple[str, float]:
+    """질의에 맞는 상위 k개 컨텍스트를 검색하여 문자열과 최고 유사도 점수를 반환한다.
+    
+    Returns:
+        (context_string, max_similarity_score) 튜플
+        - context_string: 검색된 컨텍스트 문자열
+        - max_similarity_score: 최고 유사도 점수 (0.0 ~ 1.0, 높을수록 유사함)
+    """
     try:
+        # vector_db 폴더가 없으면 즉시 반환
+        if not os.path.exists(DB_DIR):
+            _log(f"[경고] Vector DB 폴더가 없습니다: {DB_DIR}")
+            return ("참고: 내부 문서가 아직 준비되지 않았습니다. 문서를 업로드하고 RAG를 재구축해주세요.", 0.0)
+        
         db = get_vector_db()
         if db is None:
-            return "참고: Vector DB가 로드되지 않아 내부 문서를 참조할 수 없습니다."
+            return ("참고: Vector DB가 로드되지 않아 내부 문서를 참조할 수 없습니다.", 0.0)
 
         snippet = (question or "")[:50]
         _log(f"질문 검색: {snippet}...")
 
-        docs: List[Document] = db.similarity_search(question, k=k)
-        if not docs:
+        # 유사도 점수와 함께 검색
+        docs_with_scores = db.similarity_search_with_score(question, k=k)
+        if not docs_with_scores:
             _log("관련 문서를 찾지 못했습니다.")
-            return "참고: 질문과 관련된 내부 문서를 찾지 못했습니다."
+            return ("참고: 질문과 관련된 내부 문서를 찾지 못했습니다.", 0.0)
 
+        # 최고 유사도 점수 추출 (점수가 낮을수록 거리가 멀고 유사도가 낮음)
+        # Chroma는 거리(distance)를 반환하므로, 유사도 점수로 변환 (1.0 - distance)
+        max_similarity = 1.0 - min(score for _, score in docs_with_scores)
+        
         context_lines: List[str] = []
         sources = set()
-        for idx, doc in enumerate(docs, start=1):
+        for idx, (doc, score) in enumerate(docs_with_scores, start=1):
+            similarity = 1.0 - score  # 거리를 유사도로 변환
             source = os.path.basename(doc.metadata.get("source", "알 수 없음"))
             sources.add(source)
-            context_lines.append(f"--- 참고자료 {idx} (출처: {source}) ---")
+            context_lines.append(f"--- 참고자료 {idx} (출처: {source}, 유사도: {similarity:.3f}) ---")
             context_lines.append(doc.page_content)
             context_lines.append("------------------------------------------------")
 
-        _log(f"{len(docs)}개 문서 조각 사용 (출처: {sorted(sources)})")
-        return "\n".join(context_lines)
+        _log(f"{len(docs_with_scores)}개 문서 조각 사용 (출처: {sorted(sources)}, 최고 유사도: {max_similarity:.3f})")
+        return ("\n".join(context_lines), max_similarity)
 
     except Exception as exc:  # pragma: no cover - 방어적 로깅
         _log(f"[오류] Context 검색 실패: {exc}")
@@ -94,5 +131,6 @@ if __name__ == "__main__":  # pragma: no cover - 수동 테스트 용도
     _log("RAG 서비스 단독 실행 테스트")
     get_vector_db()
     sample_q = "검사업무 절차를 알려줘"
-    print(retrieve_context(sample_q))
+    context, score = retrieve_context(sample_q)
+    print(f"컨텍스트:\n{context}\n\n유사도 점수: {score:.3f}")
 
