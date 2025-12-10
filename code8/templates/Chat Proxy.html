@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chat Proxy – Clean Light UI</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root{
+      /* 기본 테마: 그린 */
+      --dark-green: #39462C;
+      --light-beige: #F5F0E8;
+      --light-green: #C8E6C9;
+      --dark-green-text: #ffffff;
+      --light-green-text: #2E7D32;
+      
+      --bg: var(--light-beige);
+      --panel: #ffffff;
+      --muted:#f6f8fb; --ring:#e6eaf2;
+      --text:#101828; --sub:#667085;
+      --blue:#2563eb; --blue-2:#60a5fa; --mint:#10b981;
+      --danger:#ef4444; --success:#16a34a; --shadow:0 10px 24px rgba(16,24,40,.06);
+      --radius:16px; --radius-sm:12px;
+    }
+
+    /* 다크 모드 */
+    body.theme-dark{
+      --dark-green: #1a1f16;
+      --light-beige: #1e1e1e;
+      --light-green: #2d3a2d;
+      --dark-green-text: #ffffff;
+      --light-green-text: #90ee90;
+      --bg: #1e1e1e;
+      --panel: #2a2a2a;
+      --muted: #333333; --ring: #404040;
+      --text: #e5e7eb; --sub: #9ca3af;
+    }
+    
+    /* 블루 테마 */
+    body.theme-blue{
+      --dark-green: #1e3a8a;
+      --light-beige: #eff6ff;
+      --light-green: #bfdbfe;
+      --dark-green-text: #ffffff;
+      --light-green-text: #1e40af;
+    }
+    
+    /* 퍼플 테마 */
+    body.theme-purple{
+      --dark-green: #581c87;
+      --light-beige: #faf5ff;
+      --light-green: #e9d5ff;
+      --dark-green-text: #ffffff;
+      --light-green-text: #6b21a8;
+    }
+    
+    /* 로즈 테마 */
+    body.theme-rose{
+      --dark-green: #9f1239;
+      --light-beige: #fff1f2;
+      --light-green: #fecdd3;
+      --dark-green-text: #ffffff;
+      --light-green-text: #be123c;
+    }
+    
+    /* 오렌지 테마 */
+    body.theme-orange{
+      --dark-green: #9a3412;
+      --light-beige: #fff7ed;
+      --light-green: #fed7aa;
+      --dark-green-text: #ffffff;
+      --light-green-text: #c2410c;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background: var(--bg);color:var(--text);font:500 15px/1.55 "Pretendard","Inter","Noto Sans KR",system-ui}
+    .layout{display:grid;grid-template-columns:280px 1fr 300px;gap:0;height:100vh;overflow:hidden}
+
+    /* drag & drop */
+    .drop-zone {
+      position: relative; /* 자식 요소(overlay)의 기준점 */
+    }
+
+    .drop-zone-overlay {
+      position: absolute;
+      inset: 0; /* 부모 요소(drop-zone)를 꽉 채움 */
+      background-color: rgba(37, 99, 235, 0.1); /* 반투명 파란색 배경 */
+      border: 2px dashed var(--blue);
+      border-radius: var(--radius);
+      display: none; /* 평소에는 숨김 */
+      place-items: center; /* 중앙 정렬 */
+      font-weight: 600;
+      color: var(--blue);
+      pointer-events: none; /* 아래 요소 클릭 방해 금지 */
+      z-index: 10;
+    }
+
+    .drop-zone.dragover .drop-zone-overlay {
+      display: grid; /* 드래그 중일 때만 보이게 함 */
+    }
+    
+    /* Sidebar */
+    .sidebar{background:var(--dark-green);color:var(--dark-green-text);border-right:1px solid rgba(255,255,255,0.1);padding:16px 14px;display:flex;flex-direction:column}
+    .brand{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+    .logo{width:28px;height:28px;border-radius:10px;background:rgba(255,255,255,0.2);display:grid;place-items:center;color:var(--dark-green-text);font-weight:bold}
+    .brand h1{font-size:16px;margin:0;letter-spacing:.2px;color:var(--dark-green-text)}
+    .sb-btn{width:100%;display:flex;align-items:center;gap:8px;padding:10px 12px;margin:6px 0;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:var(--dark-green-text);border-radius:12px;cursor:pointer}
+    .sb-btn.primary{background:rgba(255,255,255,0.2);border-color:rgba(255,255,255,0.3)}
+    .sb-btn:hover{background:rgba(255,255,255,0.15)}
+    .group-title{font-size:12px;color:rgba(255,255,255,0.7);margin:16px 6px 8px}
+    .recent{flex:1;overflow:auto;border-top:1px dashed rgba(255,255,255,0.2);margin-top:12px;padding-top:12px}
+    .recent .item{padding:8px 10px;border-radius:10px;display:block;color:rgba(255,255,255,0.9);text-decoration:none;border:1px solid transparent}
+    .recent .item:hover{background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2)}
+
+    /* Main */
+    .main{display:grid;grid-template-rows:auto 1fr auto;height:100vh;background:var(--bg);overflow:hidden}
+    .topbar{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--ring);background:var(--dark-green);color:var(--dark-green-text)}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px dashed rgba(255,255,255,0.3);color:rgba(255,255,255,0.8);background:rgba(255,255,255,0.1);font-size:12px}
+    .status{width:8px;height:8px;border-radius:50%;background:#9aa4b2}
+    .status.ok{background:#16a34a}
+    .status.err{background:#ef4444}
+    .grow{flex:1}
+    .select, .btn{border:1px solid var(--ring);background:var(--panel);color:var(--text);border-radius:12px;box-shadow:var(--shadow)}
+    .select{padding:8px 10px;background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2);color:var(--dark-green-text);cursor:pointer;font-size:14px}
+    .select:hover{background:rgba(255,255,255,0.15)}
+    .select:focus{outline:none;border-color:rgba(255,255,255,0.3)}
+    .select option{background:#ffffff !important;color:#000000 !important;padding:8px}
+    .select optgroup{background:#ffffff !important;color:#000000 !important;font-weight:600;padding:8px}
+    .btn{padding:10px 14px;cursor:pointer}
+    .model-tabs{display:flex;gap:8px;align-items:center}
+    .model-tab{padding:8px 16px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:var(--dark-green-text);border-radius:8px;cursor:pointer;font-size:14px;transition:all 0.2s}
+    .model-tab.active{background:var(--light-green);color:var(--light-green-text);border-color:var(--light-green)}
+    .theme-btn{
+      padding:8px 14px;
+      background:rgba(255,255,255,0.15);
+      border:1px solid rgba(255,255,255,0.25);
+      border-radius:10px;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      gap:6px;
+      font-size:13px;
+      font-weight:500;
+      color:var(--dark-green-text);
+      transition:all 0.2s;
+      white-space:nowrap;
+    }
+    .theme-btn:hover{
+      background:rgba(255,255,255,0.25);
+      transform:scale(1.02);
+    }
+    .theme-dropdown{
+      position:absolute;
+      top:calc(100% + 8px);
+      right:0;
+      background:#fff;
+      border:1px solid #e5e7eb;
+      border-radius:12px;
+      box-shadow:0 8px 24px rgba(0,0,0,0.12);
+      min-width:200px;
+      display:none;
+      overflow:hidden;
+      z-index:1000;
+    }
+    .theme-dropdown.show{display:block;}
+    .theme-option{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:10px 14px;
+      cursor:pointer;
+      transition:all 0.15s;
+      color:var(--text);
+    }
+    .theme-option:hover{
+      background:rgba(37,99,235,0.08);
+    }
+    .theme-option.active{
+      background:rgba(200,230,201,0.3);
+      font-weight:600;
+    }
+    .theme-name{font-size:14px;font-weight:500;}
+    .theme-colors{
+      display:flex;
+      gap:4px;
+    }
+    .color-chip{
+      width:20px;
+      height:20px;
+      border-radius:6px;
+      border:1px solid rgba(0,0,0,0.1);
+      box-shadow:0 1px 3px rgba(0,0,0,0.1);
+    }
+    .user-icon{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.2);display:grid;place-items:center;cursor:pointer;color:var(--dark-green-text);position:relative}
+    .topbar-right{display:flex;align-items:center;gap:12px}
+    .user-menu{position:absolute;top:100%;right:0;margin-top:8px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);min-width:160px;display:none;z-index:1000}
+    .user-menu.show{display:block}
+    .user-menu-item{padding:10px 16px;cursor:pointer;color:var(--text);font-size:14px;transition:background 0.2s}
+    .user-menu-item:hover{background:#f3f4f6}
+    .user-menu-item:first-child{border-top-left-radius:8px;border-top-right-radius:8px}
+    .user-menu-item:last-child{border-bottom-left-radius:8px;border-bottom-right-radius:8px}
+    .user-menu-divider{height:1px;background:#e5e7eb;margin:4px 0}
+
+    /* Home */
+    .home{display:grid;place-items:center;padding:40px;position:relative;overflow:hidden}
+    .home-watermark{position:absolute;font-size:120px;font-weight:800;color:rgba(0,0,0,0.03);z-index:0;pointer-events:none;white-space:nowrap}
+    .hero{max-width:760px;text-align:center;position:relative;z-index:1}
+    .hero h2{font-size:40px;font-weight:800;letter-spacing:-.3px;margin:24px 0;color:var(--text)}
+    .hero p{color:var(--sub);margin:0 0 24px}
+    .name-chip{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--ring);border-radius:999px;padding:6px 10px;background:#fff;color:#475467;font-size:12px}
+    .name-chip button{border:0;background:transparent;color:var(--blue);cursor:pointer}
+    .prompt-suggestions{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:40px 0;max-width:900px}
+    .prompt-box{padding:16px;border:1px solid #FF9800;border-radius:12px;background:#fff;cursor:pointer;transition:all 0.2s;text-align:left;font-size:14px;color:var(--text);box-shadow:0 2px 4px rgba(0,0,0,0.05)}
+    .prompt-box:hover{border-color:#F57C00;box-shadow:0 4px 8px rgba(0,0,0,0.1);transform:translateY(-2px)}
+    .search{display:flex;gap:10px;border:1px solid var(--ring);background:#fff;border-radius:16px;padding:12px 14px;align-items:center;box-shadow:var(--shadow)}
+    .search input{flex:1;background:transparent;border:0;outline:none;color:var(--text);font-size:16px}
+    .search .btn{background:var(--dark-green);color:var(--dark-green-text);border:none;padding:10px 16px}
+
+    /* 다크 모드 전용: 가운데 인사말 */
+    body.theme-dark .hero h2 { color:#ffffff; }
+    body.theme-dark .hero p { color:#e5e7eb; }
+
+    /* Chat view */
+    .chat{display:none;grid-template-rows:1fr auto;height:calc(100vh - 58px)}
+    .history{overflow:auto;padding:20px;background:var(--light-beige)}
+    .msg{display:flex;gap:12px;margin:20px 0;align-items:flex-start}
+    .msg.user{flex-direction:row-reverse}
+    .avatar{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:bold;flex-shrink:0}
+    .user .avatar{display:none}
+    .assistant .avatar{background:#10b981;margin-right:8px}
+    .bubble{max-width:75%;padding:14px 16px;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.1);position:relative}
+    .user .bubble{margin-left:auto;background:linear-gradient(180deg,rgba(59,130,246,.12),rgba(59,130,246,.06));border-top-right-radius:4px;color:var(--text);border:1px solid rgba(59,130,246,.1)}
+    .assistant .bubble{background:#ffffff;border:1px solid #e5e7eb;border-top-left-radius:4px;color:var(--text)}
+    .role{font-size:12px;color:#6b7280;margin-bottom:8px;font-weight:500;display:none}
+    .msg-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+    .msg-action-btn{background:var(--dark-green);color:var(--dark-green-text);border:none;padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer;transition:all 0.2s}
+    .msg-action-btn:hover{opacity:0.9;transform:translateY(-1px)}
+    .msg-feedback{display:flex;gap:8px;margin-top:8px;align-items:center}
+    .feedback-btn{background:transparent;border:1px solid #e5e7eb;padding:6px 10px;border-radius:6px;cursor:pointer;color:#6b7280;font-size:12px;transition:all 0.2s}
+    .feedback-btn:hover{background:#f3f4f6;border-color:#d1d5db}
+
+    .composer{position:sticky;bottom:0;backdrop-filter:saturate(1.1);padding:12px 18px;border-top:1px solid var(--ring);background:#ffffff}
+    .composer-inner{display:flex;gap:10px;align-items:flex-end;max-width:980px;margin:0 auto}
+    textarea{flex:1;min-height:52px;max-height:180px;resize:vertical;border:1px solid var(--ring);background:#fff;color:var(--text);padding:12px 12px 14px;border-radius:12px;outline:none;box-shadow:var(--shadow)}
+    textarea::placeholder{color:#98a2b3}
+    .send-btn{background:var(--dark-green);color:var(--dark-green-text);border:none;padding:12px 20px}
+    /* Right Sidebar */
+    .right-sidebar{background:var(--light-green);border-left:1px solid rgba(0,0,0,0.1);padding:20px;display:flex;flex-direction:column;overflow-y:auto}
+    .right-sidebar-title{font-size:14px;font-weight:600;color:var(--light-green-text);margin-bottom:16px}
+    .links-container{flex:1}
+
+    @media (max-width:980px){.layout{grid-template-columns:1fr} .sidebar{display:none} .hero h2{font-size:30px} .bubble{max-width:100%}}
+
+    .security-notice {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--ring);
+      font-size: 13px;
+      color: var(--sub);
+      opacity: 0.8;
+    }
+
+    /* 응답 포맷 스타일 개선 */
+    .content h2 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 18px 0 10px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #e6eaf2;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .content h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #475467;
+      margin: 14px 0 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .content ul, .content ol {
+      margin: 8px 0;
+      padding-left: 24px;
+      line-height: 1.7;
+    }
+
+    .content li {
+      margin: 6px 0;
+      color: var(--text);
+    }
+
+    .content li::marker {
+      color: var(--blue);
+      font-weight: 600;
+    }
+
+    .content strong {
+      color: var(--text);
+      font-weight: 600;
+      background: linear-gradient(180deg, transparent 60%, rgba(37,99,235,.12) 60%);
+      padding: 0 2px;
+    }
+
+    .content code {
+      background: #f6f8fb;
+      color: #e11d48;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      border: 1px solid #e6eaf2;
+    }
+
+    .content pre {
+      background: #f6f8fb;
+      border: 1px solid var(--ring);
+      border-radius: 8px;
+      padding: 12px;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+
+    .content pre code {
+      background: transparent;
+      border: none;
+      padding: 0;
+      color: var(--text);
+    }
+
+    .content p {
+      margin: 8px 0;
+      line-height: 1.7;
+    }
+
+    .content br {
+      display: block;
+      content: '';
+      margin: 4px 0;
+    }
+
+    /* 섹션 구분 강화 */
+    .content > div {
+      margin: 12px 0;
+    }
+
+    .assistant .bubble {
+      background: linear-gradient(180deg, #ffffff, #fafbfc);
+      border-color: #e0e7f0;
+    }
+    /* 다크모드에서 내가 보낸 메시지(사용자 버블) 배경을 밝게 변경 */
+    body.theme-dark .user .bubble {
+      /* 어시스턴트와 동일한 밝은 배경색 적용 */
+      background: #ffffff;
+      /* 어시스턴트와 유사한 테두리색 적용 */
+      border: 1px solid #e0e7f0;
+      /* 텍스트는 밝은 배경에 잘 보이는 어두운 색 유지 */
+      color: #101828 !important; 
+      /* 기존에 깨지던 오른쪽 위 모서리 둥근 정도를 다시 4px로 고정 */
+      border-top-right-radius: 4px;
+    }
+</style>
+</head>
+<body class="drop-zone">
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand"><div class="logo">C</div><h1>proxy bot</h1></div>
+      <button class="sb-btn primary" id="newChatBtn">＋ New Chat</button>
+      <div class="recent" id="recentList"></div>
+      <div style="margin-top:auto; padding-top:16px;">
+        <button class="sb-btn primary" id="logoutBtn" type="button" data-href="/">
+          로그아웃
+        </button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <span class="pill"><span class="status" id="healthDot"></span> 프록시 상태</span>
+        <div class="grow"></div>
+        <div class="topbar-right">
+          <select id="model" class="select" aria-label="모델 선택">
+            <optgroup label="Gemini 텍스트 모델">
+              <option value="gemini-1.5-flash" selected>Gemini 1.5 Flash ⭐ 추천</option>
+              <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+              <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</option>
+            </optgroup>
+            <optgroup label="Ollama (로컬)">
+              <option value="ollama:qwen3:8b">Ollama - Qwen3 8B</option>
+              <option value="ollama:llama3.1:8b">Ollama - Llama 3.1 8B</option>
+              <option value="ollama:mistral:7b">Ollama - Mistral 7B</option>
+            </optgroup>
+          </select>
+          <div style="display:flex;align-items:center;gap:8px;position:relative;">
+            <button class="theme-btn" id="themeButton" title="테마 변경">
+              <span id="currentThemeText">그린</span>
+            </button>
+            <div class="theme-dropdown" id="themeDropdown">
+              <div class="theme-option" data-theme="default">
+                <span class="theme-name">그린</span>
+                <div class="theme-colors">
+                  <span class="color-chip" style="background:#39462C"></span>
+                  <span class="color-chip" style="background:#F5F0E8"></span>
+                  <span class="color-chip" style="background:#C8E6C9"></span>
+                </div>
+              </div>
+              <div class="theme-option" data-theme="dark">
+                <span class="theme-name">다크</span>
+                <div class="theme-colors">
+                  <span class="color-chip" style="background:#1a1f16"></span>
+                  <span class="color-chip" style="background:#1e1e1e"></span>
+                  <span class="color-chip" style="background:#2d3a2d"></span>
+                </div>
+              </div>
+              <div class="theme-option" data-theme="blue">
+                <span class="theme-name">블루</span>
+                <div class="theme-colors">
+                  <span class="color-chip" style="background:#1e3a8a"></span>
+                  <span class="color-chip" style="background:#eff6ff"></span>
+                  <span class="color-chip" style="background:#bfdbfe"></span>
+                </div>
+              </div>
+              <div class="theme-option" data-theme="purple">
+                <span class="theme-name">퍼플</span>
+                <div class="theme-colors">
+                  <span class="color-chip" style="background:#581c87"></span>
+                  <span class="color-chip" style="background:#faf5ff"></span>
+                  <span class="color-chip" style="background:#e9d5ff"></span>
+                </div>
+              </div>
+              <div class="theme-option" data-theme="rose">
+                <span class="theme-name">로즈</span>
+                <div class="theme-colors">
+                  <span class="color-chip" style="background:#9f1239"></span>
+                  <span class="color-chip" style="background:#fff1f2"></span>
+                  <span class="color-chip" style="background:#fecdd3"></span>
+                </div>
+              </div>
+              <div class="theme-option" data-theme="orange">
+                <span class="theme-name">오렌지</span>
+                <div class="theme-colors">
+                  <span class="color-chip" style="background:#9a3412"></span>
+                  <span class="color-chip" style="background:#fff7ed"></span>
+                  <span class="color-chip" style="background:#fed7aa"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <section class="home" id="home">
+        <div class="home-watermark">proxy bot</div>
+        <div class="hero">
+          <h2 id="greet">안녕하세요.</h2>
+          <p>무엇을 도와드릴까요? 민감한 정보는 프록시가 자동으로 점검하고 처리합니다.</p>
+          
+          <div class="search">
+            <input id="homeInput" placeholder="Send a message..." />
+            <button class="btn" id="homeSend" style="background: var(--dark-green); color: var(--dark-green-text); border: none; padding: 10px 16px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--light-green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="logs" id="logs" style="display:none; padding:16px;">
+        <h2>감사 로그</h2>
+        <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr style="background-color:#f6f8fb;">
+                <th style="padding:10px; text-align:left; border-bottom:1px solid #e6eaf2;">시간</th>
+                <th style="padding:10px; text-align:left; border-bottom:1px solid #e6eaf2;">입력 프롬프트</th>
+                <th style="padding:10px; text-align:left; border-bottom:1px solid #e6eaf2;">탐지 내역</th>
+                <th style="padding:10px; text-align:left; border-bottom:1px solid #e6eaf2;">LLM 응답</th>
+                <th style="padding:10px; text-align:left; border-bottom:1px solid #e6eaf2;">액션</th>
+              </tr>
+            </thead>
+            <tbody id="logTableBody">
+              </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="chat" id="chat">
+        <div class="history" id="history" aria-live="polite"></div>
+        <div class="composer">
+          <div class="composer-inner">
+            <textarea id="input" placeholder="메시지를 입력하세요… (Enter: 전송, Shift+Enter: 줄바꿈)" spellcheck="false"></textarea>
+            
+            <!-- 파일 첨부 기능 제거 -->
+            <!-- <button class="btn" id="fileBtn" title="파일 첨부 (.txt, .pdf)">📎</button>
+            <input type="file" id="fileInput" accept=".txt,.pdf" hidden /> -->
+            <button class="btn send-btn" id="sendBtn" style="background: var(--dark-green); color: var(--dark-green-text); border: none; padding: 12px 20px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--light-green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </div>
+
+          <!-- <div id="filePreview" style="font-size: 13px; color: var(--sub); margin-top: 5px; text-align: center;"></div> -->
+        </div>
+      </section>
+    </main>
+
+    <aside class="right-sidebar">
+      <div class="right-sidebar-title">참고 문서 링크</div>
+      <div class="links-container" id="linksContainer">
+        <div style="text-align: center; color: var(--light-green-text); padding: 20px; font-size: 13px;">
+          RAG 사용 시 참고한 <strong>문서</strong>와 <strong>웹사이트</strong> 링크가 여기에 표시됩니다
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <template id="msgTpl">
+    <div class="msg">
+      <div class="avatar" data-avatar></div>
+      <div class="bubble">
+        <div class="role" data-role-label></div>
+        <div class="content"></div>
+        <div class="msg-actions" data-actions style="display:none;"></div>
+        <div class="msg-feedback" data-feedback style="display:none;">
+          <button class="feedback-btn">👍</button>
+          <button class="feedback-btn">👎</button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <script>
+// === Config ===
+const API_BASE = "";
+const ENDPOINT = { chat: `${API_BASE}/chat`, health: `${API_BASE}/health`, logs: `${API_BASE}/api/admin/logs` }; // 로그 엔드포인트 수정
+
+// === Elements ===
+const el = (s) => document.querySelector(s);
+const historyEl = el('#history');
+const input = el('#input');
+const sendBtn = el('#sendBtn');
+const modelSel = el('#model');
+const healthDot = el('#healthDot');
+const recentList = el('#recentList');
+const home = el('#home');
+const chat = el('#chat');
+const homeInput = el('#homeInput');
+const homeSend = el('#homeSend');
+const newChatBtn = el('#newChatBtn');
+const greet = el('#greet');
+const namePreview = el('#namePreview');
+const editNameBtn = el('#editNameBtn');
+const logsEl = el('#logs');
+const logsTableBody = el('#logTableBody');
+const logsBtn = el('#logsBtn');
+const policiesBtn = el('#policiesBtn'); // policiesBtn 추가
+const logoutBtn = el('#logoutBtn');
+const themeButton = el('#themeButton');
+const themeDropdown = el('#themeDropdown');
+const currentThemeText = el('#currentThemeText');
+const themeOptions = document.querySelectorAll('.theme-option');
+// 파일 첨부 기능 제거로 인해 주석 처리
+// const fileBtnHome = el('#fileBtnHome');
+// const fileInputHome = el('#fileInputHome');
+// const filePreviewHome = el('#filePreviewHome');
+// const fileBtn = el('#fileBtn');
+// const fileInput = el('#fileInput');
+// const filePreview = el('#filePreview');
+const dropZone = el('body'); // 드롭 영역 (body 전체)
+
+// === State === (selectedFile 통합, 한 번만 선언)
+const state = { messages: [], sending: false, recents: [], selectedFile: null };
+
+// === Helper Functions ===
+
+// 파일 상태 초기화 (파일 첨부 기능 제거로 간소화)
+function clearFileSelection(previewElementId = null) {
+  state.selectedFile = null; // 공통 상태 초기화
+}
+
+// 파일 선택 처리 (파일 첨부 기능 제거로 사용 안 함)
+// function handleFileSelect(file, previewElementId) { ... }
+
+// View 전환
+function toView(viewName, text = '', fileToProcess = null) { 
+  home.style.display = 'none';
+  chat.style.display = 'none';
+  logsEl.style.display = 'none';
+
+  if (viewName === 'home') {
+    home.style.display = 'grid';
+    // 홈으로 올 때 파일 상태 초기화
+    clearFileSelection(); 
+  } else if (viewName === 'chat') {
+    chat.style.display = 'grid';
+    // 홈에서 채팅 시작 시 (text나 fileToProcess가 있을 경우)
+    if (text || fileToProcess) { 
+      let userMsg = text || `📄 ${fileToProcess.name} 전송`;
+      pushUser(userMsg); // 사용자 메시지 표시
+      // reply 함수 호출 시 파일 객체 전달
+      reply(userMsg, fileToProcess); 
+      // 중요: reply 호출 후 state.selectedFile 초기화 (reply 함수 내에서 처리할 수도 있음)
+      // clearFileSelection(); // reply 함수 내부에서 초기화하므로 여기서 호출 안 함
+    } else {
+      render(); // 기존 대화 불러오기 (파일 없음)
+    }
+    // 채팅 화면 진입 시 최근 목록 업데이트는 reply 함수에서 처리하므로 여기서는 불필요
+    // addRecentPreview(); // 중복 호출 제거
+  } else if (viewName === 'logs') {
+    logsEl.style.display = 'block';
+    fetchAndRenderLogs();
+  }
+}
+
+// 로그 렌더링
+async function fetchAndRenderLogs() {
+  logsTableBody.innerHTML = '<tr><td colspan="5">로그 로딩 중...</td></tr>'; // 로딩 표시 추가
+  try {
+    const res = await fetch(ENDPOINT.logs, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`로그를 불러오는 데 실패했습니다. (${res.status})`);
+    const logs = await res.json();
+
+    if (logs.length === 0) {
+        logsTableBody.innerHTML = '<tr><td colspan="5">표시할 로그가 없습니다.</td></tr>';
+        return;
+    }
+
+    logsTableBody.innerHTML = ''; // 이전 내용 지우기
+    logs.forEach(log => {
+      const row = document.createElement('tr');
+      // ts를 Date 객체로 파싱 (ISO 문자열 Z 포함)
+      const timestamp = new Date(log.ts).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'medium'});
+      // detections_in이 pii 필드로 오므로 수정
+      const detections = (log.pii || []).join(', ') || '없음'; 
+      // action 필드를 직접 사용
+      const actionDisplay = log.action === 'block' ? '차단' : (log.action === 'mask' ? '마스킹' : '통과'); 
+
+      row.innerHTML = `
+        <td style="padding:10px; border-bottom:1px solid #e6eaf2;">${timestamp}</td>
+        <td style="padding:10px; border-bottom:1px solid #e6eaf2; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(log.user_prompt || '')}">${escapeHtml(log.user_prompt || '').substring(0, 50)}${(log.user_prompt || '').length > 50 ? '...' : ''}</td>
+        <td style="padding:10px; border-bottom:1px solid #e6eaf2;">${escapeHtml(detections)}</td>
+        <td style="padding:10px; border-bottom:1px solid #e6eaf2; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(log.llm_response || '')}">${escapeHtml(log.llm_response || '').substring(0, 50)}${(log.llm_response || '').length > 50 ? '...' : ''}</td>
+        <td style="padding:10px; border-bottom:1px solid #e6eaf2;">${actionDisplay}</td>
+      `;
+      logsTableBody.appendChild(row);
+    });
+  } catch (err) {
+    logsTableBody.innerHTML = `<tr><td colspan="5" style="padding:10px; color:#ef4444;">오류: ${err.message}</td></tr>`;
+  }
+}
+
+
+// 이름 로드/저장/업데이트
+function loadName() { return localStorage.getItem('displayName') || ''; }
+function saveName(n) { if (n) localStorage.setItem('displayName', n); else localStorage.removeItem('displayName'); }
+function updateGreeting() {
+  const hello = '안녕하세요';
+  const name = loadName();
+  greet.textContent = name ? `${hello}, ${name}` : `${hello}.`;
+  if (namePreview) {
+    namePreview.textContent = name ? name : '비개인화';
+  }
+}
+
+// 렌더링 관련 함수들
+function render() {
+  historyEl.innerHTML = '';
+  state.messages.forEach((m) => historyEl.appendChild(messageNode(m)));
+  // 새 메시지 추가 후 스크롤 맨 아래로 이동
+  requestAnimationFrame(() => {
+     historyEl.scrollTop = historyEl.scrollHeight;
+  });
+  renderRecents(); // 최근 목록도 업데이트
+}
+
+function renderRecents() {
+  recentList.innerHTML = '';
+  state.recents.forEach((r, i) => {
+    const a = document.createElement('a');
+    a.href = '#';
+    a.className = 'item';
+    // 제목이 너무 길면 자르기
+    a.textContent = (r.title || `대화 ${i + 1}`).substring(0, 20) + ((r.title || '').length > 20 ? '...' : '');
+    a.title = r.title || `대화 ${i + 1}`; // 전체 제목은 툴팁으로
+    a.onclick = (e) => {
+      e.preventDefault();
+      // 대화 복원 시 파일 상태 초기화
+      clearFileSelection();
+      state.messages = JSON.parse(r.snapshot);
+      toView('chat'); // 이전 대화 내용만 불러오도록 수정
+    };
+    recentList.appendChild(a);
+  });
+}
+
+function messageNode(m) {
+  const tpl = el('#msgTpl');
+  const node = tpl.content.firstElementChild.cloneNode(true);
+  const avatar = node.querySelector('[data-avatar]');
+  const label = node.querySelector('[data-role-label]');
+  const content = node.querySelector('.content');
+  const bubble = node.querySelector('.bubble');
+  const actions = node.querySelector('[data-actions]');
+  const feedback = node.querySelector('[data-feedback]');
+
+  node.classList.add(m.role === 'user' ? 'user' : 'assistant');
+  
+  // 아바타 설정 (AI 응답에만 표시)
+  if (m.role === 'assistant') {
+    avatar.textContent = 'A';
+  } else {
+    avatar.style.display = 'none';
+  }
+  
+  label.textContent = m.role === 'user' ? (loadName() || '사용자') : '어시스턴트';
+  content.innerHTML = renderMarkdownSafe(m.content);
+
+  // AI 응답에만 액션 버튼과 피드백 표시
+  if (m.role === 'assistant') {
+    actions.style.display = 'flex';
+    feedback.style.display = 'flex';
+    
+    // 액션 버튼 추가
+    const actionButtons = [
+      { text: 'Make Response Shorter', action: 'shorter' },
+      { text: 'Explain it to me like a lawyer', action: 'lawyer' },
+      { text: 'Tell me about more', action: 'more' }
+    ];
+    
+    actionButtons.forEach(btn => {
+      const button = document.createElement('button');
+      button.className = 'msg-action-btn';
+      button.textContent = btn.text;
+      button.onclick = () => {
+        // 액션 버튼 클릭 처리 (나중에 구현)
+        console.log('Action:', btn.action);
+      };
+      actions.appendChild(button);
+    });
+  }
+
+  if (m.notice) {
+    const noticeEl = document.createElement('div');
+    noticeEl.className = 'security-notice';
+    noticeEl.textContent = m.notice;
+    bubble.appendChild(noticeEl);
+  }
+  return node;
+}
+
+function renderMarkdownSafe(t) {
+  if (!t) return '';
+  let html = escapeHtml(t);
+  
+  // 코드 블록
+  html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+  
+  // 수평선 (--- 또는 ***)
+  html = html.replace(/^---$/gm, '<hr style="border:none; border-top:1px solid #e6eaf2; margin:16px 0;"/>');
+  html = html.replace(/^\*\*\*$/gm, '<hr style="border:none; border-top:1px solid #e6eaf2; margin:16px 0;"/>');
+  
+  // 섹션 헤더 (## 법령, ## 근거 등)
+  html = html.replace(/^## (.+)$/gm, (match, title) => {
+    const icon = getIconForSection(title);
+    return `<h2>${icon} ${title}</h2>`;
+  });
+  
+  // 서브 헤더 (### 또는 - [제목])
+  html = html.replace(/^### (.+)$/gm, '<h3>▸ $1</h3>');
+  html = html.replace(/^- \[([^\]]+)\](.*)$/gm, '<h3>▸ $1</h3><p style="margin-left:20px">$2</p>');
+  
+  // 리스트 항목 (1. 2. 3. 형식)
+  html = html.replace(/^(\d+)\. (.+)$/gm, '<div style="margin:8px 0"><strong style="color:var(--blue)">$1.</strong> $2</div>');
+  
+  // 강조 (** **)
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  
+  // 인라인 코드
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  
+  // 줄바꿈
+  html = html.replace(/\n\n/g, '<br/><br/>');
+  html = html.replace(/\n/g, '<br/>');
+  
+  return html;
+}
+
+function getIconForSection(title) {
+  const icons = {
+    '법령': '⚖️',
+    '근거': '📋',
+    '근거 출처': '📋',
+    '로 키워드': '🔎',
+    '단계': '📝',
+    '더욱 단계': '📝',
+    '다음 단계': '📝',
+    '문의사항': '❓',
+    '체크리스트': '✅',
+    '주의사항': '⚠️'
+  };
+  return icons[title] || '📌';
+}
+
+function escapeHtml(s) { if(!s) return ''; return s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+// === Chat Logic ===
+function pushUser(content) {
+  // 빈 메시지 추가 방지
+  if (!content || !content.trim()) return;
+  state.messages.push({ role: 'user', content: content.trim() });
+  input.value = ''; // 입력창 비우기
+  render();
+}
+
+async function send() {
+  console.log('[send] 함수 호출됨');
+  const content = input.value.trim();
+  const file = state.selectedFile;
+  console.log('[send] content:', content, 'file:', file, 'sending:', state.sending);
+  // 텍스트도 없고 파일도 없거나, 전송 중이면 무시
+  if ((!content && !file) || state.sending) {
+    console.log('[send] 전송 취소됨 (내용 없음 또는 전송 중)');
+    return;
+  }
+
+  let messageToSend = content;
+  // 파일만 보낼 경우, 파일 이름으로 사용자 메시지 표시
+  if (!content && file) {
+      messageToSend = `📄 ${file.name} 전송`;
+  }
+  
+  // 메시지 배열에 추가하고 화면 렌더링
+  if (messageToSend) {
+      pushUser(messageToSend);
+  }
+  
+  const fileToSend = file; // reply 함수에 전달할 파일 저장
+  clearFileSelection(); // 파일 상태 초기화 (중요)
+
+  // 비동기 응답 처리 시작
+  reply(messageToSend, fileToSend); 
+}
+
+
+async function reply(userMessage, attachedFile) { // file 인자 사용
+  state.sending = true;
+  sendBtn.disabled = true;
+  sendBtn.innerHTML = '<span style="font-size: 18px;">⏳</span>';
+  const model = modelSel.value;
+
+  const formData = new FormData();
+  formData.append('model', model);
+  // 'messages'는 마지막 사용자 메시지를 제외하고 보냄 (서버에서 추가할 것이므로)
+  const messagesForApi = state.messages.slice(0, -1);
+  formData.append('messages', JSON.stringify(messagesForApi));
+  // 실제 사용자 입력 원문 (파일 이름 표시 메시지 말고)
+  formData.append('user_prompt_text', userMessage); 
+
+  if (attachedFile) {
+    formData.append('file', attachedFile);
+  }
+
+  try {
+    const res = await fetch(ENDPOINT.chat, {
+      method: 'POST',
+      body: formData
+    });
+    // 응답 상태와 관계없이 일단 JSON 파싱 시도
+    const data = await res.json();
+
+    let assistantMessage;
+    if (!res.ok) {
+      // 서버가 에러 메시지(data.error, data.detail)를 보낸 경우
+      const errorTitle = data.error || "요청 처리 중 오류가 발생했습니다.";
+      const errorDetail = data.detail || `서버 응답 코드: ${res.status}`;
+      let content = `**${errorTitle}**\n\n${errorDetail}`;
+      if (data.blocked_snippet) {
+        const snippet = (data.blocked_snippet || '').replace(/\s+/g, ' ').trim();
+        content += `\n\n차단된 부분: ${snippet}`;
+      }
+      assistantMessage = {
+        role: 'assistant',
+        content
+      };
+    } else {
+      // 성공 시
+      let content = data.content || "(응답 없음)";
+      
+      // 모델 정보가 있으면 "## 다음 단계" 뒤에 추가 (중복 방지)
+      if (data.model_used) {
+        // 이미 모델 정보가 포함되어 있는지 확인 (중복 방지)
+        if (!content.includes('응답 모델:')) {
+          // "## 다음 단계" 섹션 뒤에 구분선과 함께 추가
+          if (content.includes('## 다음 단계')) {
+            // "## 다음 단계" 섹션의 끝을 찾아서 그 뒤에 추가
+            const sections = content.split(/(?=##)/);
+            let inserted = false;
+            for (let i = 0; i < sections.length; i++) {
+              if (sections[i].includes('## 다음 단계')) {
+                // 다음 섹션이 있으면 그 앞에, 없으면 맨 끝에 추가
+                if (i < sections.length - 1) {
+                  sections[i] += `\n\n---\n*🤖 응답 모델: ${data.model_used}*\n\n`;
+                } else {
+                  sections[i] += `\n\n---\n*🤖 응답 모델: ${data.model_used}*`;
+                }
+                inserted = true;
+                break;
+              }
+            }
+            if (inserted) {
+              content = sections.join('');
+            } else {
+              // "## 다음 단계"를 찾지 못한 경우 맨 끝에 추가
+              content += `\n\n---\n*🤖 응답 모델: ${data.model_used}*`;
+            }
+          } else {
+            // "## 다음 단계" 섹션이 없으면 맨 끝에 추가
+            content += `\n\n---\n*🤖 응답 모델: ${data.model_used}*`;
+          }
+        }
+      }
+      
+      assistantMessage = {
+        role: 'assistant',
+        content: content,
+        notice: data.notice || null
+      };
+      
+      // 참고 문서 정보가 있으면 오른쪽 사이드바에 표시
+      if (data.source_docs && data.source_docs.length > 0) {
+        updateSourceDocs(data.source_docs);
+      }
+    }
+    state.messages.push(assistantMessage);
+
+  } catch (err) {
+    // 네트워크 오류 또는 JSON 파싱 실패
+    state.messages.push({ role: 'assistant', content: `요청 오류: \`${err.message}\`` });
+  } finally {
+    state.sending = false;
+    sendBtn.disabled = false;
+    sendBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--light-green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>';
+    render(); // 최종 결과 렌더링
+    // 응답 후 최근 대화 목록 업데이트 (대화가 완전히 끝난 후 1번만)
+    addRecentPreview(); 
+  }
+}
+
+
+// Health Check
+async function health() { 
+  if (!healthDot) {
+    console.warn('[Health Check] healthDot element not found');
+    return;
+  }
+  try { 
+    const r = await fetch(ENDPOINT.health, { 
+      cache: 'no-store',
+      method: 'GET'
+    }); 
+    if (r.ok) {
+      const data = await r.json();
+      const ok = data.ok === true;
+      if (ok) {
+        healthDot.classList.add('ok');
+        healthDot.classList.remove('err');
+        console.log('[Health Check] OK: 서버 연결됨');
+      } else {
+        healthDot.classList.remove('ok');
+        healthDot.classList.add('err');
+        console.log('[Health Check] 서버 응답 오류');
+      }
+    } else {
+      healthDot.classList.remove('ok'); 
+      healthDot.classList.add('err');
+      console.warn('[Health Check] Failed - Status:', r.status);
+    }
+  } catch (err) { 
+    healthDot.classList.remove('ok'); 
+    healthDot.classList.add('err');
+    console.error('[Health Check] Error:', err);
+  } 
+}
+
+// Recents (in-memory)
+function addRecentPreview() {
+  // 메시지가 없으면 추가하지 않음
+  if (state.messages.length === 0) return;
+  
+  // 첫 사용자 메시지 찾기 (없으면 추가 안 함)
+  const firstUserMessage = state.messages.find(m => m.role === 'user');
+  if (!firstUserMessage) return;
+
+  const newRecent = {
+    // 제목은 첫 사용자 메시지로, 너무 길면 자름
+    title: firstUserMessage.content.substring(0, 24) + (firstUserMessage.content.length > 24 ? '...' : ''),
+    ts: Date.now(),
+    // 현재 대화 상태 전체를 문자열로 저장
+    snapshot: JSON.stringify(state.messages) 
+  };
+
+  // 기존 recents 배열에서 같은 제목을 가진 최근 항목 제거 (중복 방지 - 제목 기준)
+  state.recents = state.recents.filter(r => r.title !== newRecent.title);
+
+  // 맨 앞에 새 항목 추가
+  state.recents.unshift(newRecent);
+  // 최대 15개만 유지
+  state.recents = state.recents.slice(0, 15);
+  // 화면 다시 그리기
+  renderRecents();
+}
+
+
+// RBAC UI Control
+function checkAdminRole(role) {
+  // 역할이 'admin'일 경우에만 버튼을 보이게 함
+  const isAdmin = role === 'admin';
+  if (policiesBtn) policiesBtn.style.display = isAdmin ? 'flex' : 'none'; // display: block 대신 flex
+  if (logsBtn) logsBtn.style.display = isAdmin ? 'flex' : 'none';
+}
+
+// === Event Listeners ===
+// 파일 첨부 기능 제거됨
+/*
+fileBtnHome.addEventListener('click', () => fileInputHome.click());
+fileInputHome.addEventListener('change', (e) => {
+  if (e.target.files.length > 0) {
+    handleFileSelect(e.target.files[0], 'filePreviewHome'); 
+  }
+});
+
+// 드래그 앤 드롭
+dropZone.addEventListener('dragenter', (e) => { e.preventDefault(); e.stopPropagation(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); if (e.relatedTarget && dropZone.contains(e.relatedTarget)) return; dropZone.classList.remove('dragover'); });
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  dropZone.classList.remove('dragover'); 
+  if (e.dataTransfer.files.length > 0) {
+    const currentView = home.style.display !== 'none' ? 'home' : 'chat';
+    const previewId = currentView === 'home' ? 'filePreviewHome' : 'filePreview';
+    handleFileSelect(e.dataTransfer.files[0], previewId); 
+  }
+});
+*/
+
+// 채팅 입력 및 전송
+input.addEventListener('keydown', (e) => { 
+  console.log('[keydown] key:', e.key, 'shiftKey:', e.shiftKey, 'isComposing:', e.isComposing);
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { 
+    e.preventDefault(); 
+    console.log('[keydown] Enter 키 감지 - send() 호출');
+    send(); 
+  } 
+}); // isComposing 추가 (한글 입력 문제 해결)
+sendBtn.addEventListener('click', () => {
+  console.log('[click] 보내기 버튼 클릭');
+  send();
+});
+
+// 홈 입력창 이벤트
+homeInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.isComposing) {
+    e.preventDefault();
+    const text = homeInput.value.trim();
+    const file = state.selectedFile;
+    if (text || file){
+        toView('chat', text, file);
+    }
+  }
+});
+homeSend.addEventListener('click', () => {
+  const text = homeInput.value.trim();
+  const file = state.selectedFile; // 현재 선택된 파일 가져오기
+  // 텍스트나 파일 둘 중 하나라도 있으면 채팅 화면으로 이동
+  if (text || file) {
+      // toView 함수에 텍스트와 파일 객체 전달
+      toView('chat', text, file); 
+  }
+});
+newChatBtn.onclick = () => { state.messages = []; clearFileSelection(); toView('home'); }; // 새 채팅 시 메시지 및 파일 초기화
+if (logsBtn) logsBtn.onclick = () => toView('logs');
+if (editNameBtn) {
+  editNameBtn.onclick = () => {
+    const cur = loadName();
+    const next = prompt('표시할 이름을 입력하세요 (비워두면 이름 표시 안 함)', cur);
+    if (next === null) return;
+    const trimmed = (next || '').trim();
+    saveName(trimmed);
+    updateGreeting();
+    render(); // 이름 변경 후 메시지 렌더링 다시 (사용자 이름 업데이트)
+  };
+}
+
+// 로그아웃 버튼 이벤트 (사이드바 하단)
+async function handleLogout() {
+  const href = logoutBtn?.dataset.href || '/login';
+  try {
+    await fetch('/logout', { method: 'POST', credentials: 'include' });
+  } catch (err) {
+    console.warn('logout api failed, fallback redirect only', err);
+  }
+  // 클라이언트 상태 정리
+  localStorage.removeItem('displayName');
+  localStorage.removeItem('userRole');
+  // 테마는 유지, 필요하면 아래 주석 해제
+  // localStorage.removeItem('selectedThemePalette');
+  window.location.href = href;
+}
+if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+
+// 로그인 이동 버튼 (+ New Chat 아래)
+
+// === 참고 문서 링크 기능 ===
+function updateSourceDocs(docs) {
+  const linksContainer = el('#linksContainer');
+  if (!linksContainer) return;
+  
+  // 빈 배열이면 초기 메시지 표시
+  if (!docs || docs.length === 0) {
+    linksContainer.innerHTML = `
+      <div style="text-align: center; color: var(--light-green-text); padding: 20px; font-size: 13px;">
+        RAG 사용 시 참고한 <strong>문서</strong>와 <strong>웹사이트</strong> 링크가 여기에 표시됩니다
+      </div>
+    `;
+    return;
+  }
+  
+  // 문서 링크 생성
+  let html = '<div style="padding: 4px;">';
+  docs.forEach((doc, idx) => {
+    const similarityPercent = Math.round(doc.similarity * 100);
+    const fileName = doc.source || '알 수 없음';
+    const docId = `doc-${idx}`;
+    const chunks = doc.chunks || [];
+    
+    html += `
+      <div style="
+        background: rgba(255,255,255,0.7);
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-bottom: 8px;
+        border: 1px solid rgba(0,0,0,0.1);
+        transition: all 0.2s;
+      ">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px; cursor: pointer;" onclick="toggleDocContent('${docId}')">
+          <span style="font-size: 16px;">📄</span>
+          <span style="font-size: 13px; font-weight: 600; color: var(--light-green-text); flex: 1; word-break: break-all;">
+            ${fileName}
+          </span>
+          <span id="${docId}-icon" style="font-size: 12px; color: #666;">▼</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+          <div style="
+            flex: 1;
+            height: 6px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 3px;
+            overflow: hidden;
+          ">
+            <div style="
+              width: ${similarityPercent}%;
+              height: 100%;
+              background: linear-gradient(90deg, #4caf50, #8bc34a);
+              border-radius: 3px;
+              transition: width 0.3s;
+            "></div>
+          </div>
+          <span style="font-size: 11px; color: #666; font-weight: 500; min-width: 35px; text-align: right;">
+            ${similarityPercent}%
+          </span>
+        </div>
+        <div id="${docId}-content" style="display: none; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.1);">
+    `;
+    
+    // 각 텍스트 조각 표시
+    chunks.forEach((chunk, chunkIdx) => {
+      const chunkPercent = Math.round(chunk.similarity * 100);
+      html += `
+        <div style="
+          background: rgba(0,0,0,0.03);
+          border-radius: 6px;
+          padding: 8px;
+          margin-bottom: 6px;
+          font-size: 12px;
+          line-height: 1.5;
+          color: #333;
+        ">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-size: 10px; color: #666; font-weight: 600;">조각 ${chunkIdx + 1}</span>
+            <span style="font-size: 10px; color: #4caf50; font-weight: 600;">${chunkPercent}%</span>
+          </div>
+          <div style="
+            max-height: 120px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+          ">${chunk.content}${chunk.content.length >= 500 ? '...' : ''}</div>
+        </div>
+      `;
+    });
+    
+    html += `
+        </div>
+      </div>
+    `;
+  });
+  html += '</div>';
+  
+  linksContainer.innerHTML = html;
+}
+
+// 문서 내용 펼치기/접기
+function toggleDocContent(docId) {
+  const content = document.getElementById(`${docId}-content`);
+  const icon = document.getElementById(`${docId}-icon`);
+  if (!content || !icon) return;
+  
+  if (content.style.display === 'none') {
+    content.style.display = 'block';
+    icon.textContent = '▲';
+  } else {
+    content.style.display = 'none';
+    icon.textContent = '▼';
+  }
+}
+
+// 테마 색상 (더 이상 사용하지 않음 - CSS 변수로 대체)
+
+// 테마 이름 매핑
+const themeNames = {
+  'default': '그린',
+  'dark': '다크',
+  'blue': '블루',
+  'purple': '퍼플',
+  'rose': '로즈',
+  'orange': '오렌지'
+};
+
+function applyTheme(theme) {
+  // 모든 테마 클래스 제거
+  document.body.className = '';
+  
+  // 선택한 테마 적용
+  if (theme !== 'default') {
+    document.body.classList.add(`theme-${theme}`);
+  }
+  
+  // 현재 테마 텍스트 업데이트
+  if (currentThemeText) {
+    currentThemeText.textContent = themeNames[theme] || '그린';
+  }
+  
+  // 활성 상태 업데이트
+  themeOptions.forEach(opt => {
+    opt.classList.toggle('active', opt.dataset.theme === theme);
+  });
+  
+  // 로컬 스토리지에 저장
+  localStorage.setItem('selectedTheme', theme);
+}
+
+function loadTheme() {
+  const saved = localStorage.getItem('selectedTheme') || 'default';
+  applyTheme(saved);
+}
+
+// 테마 버튼 클릭 이벤트
+if (themeButton && themeDropdown) {
+  themeButton.addEventListener('click', (e) => {
+    e.stopPropagation();
+    themeDropdown.classList.toggle('show');
+  });
+  
+  // 드롭다운 외부 클릭 시 닫기
+  document.addEventListener('click', () => {
+    themeDropdown.classList.remove('show');
+  });
+  
+  themeDropdown.addEventListener('click', (e) => {
+    e.stopPropagation();
+  });
+}
+
+// 테마 옵션 클릭 이벤트
+themeOptions.forEach(option => {
+  option.addEventListener('click', () => {
+    const theme = option.dataset.theme;
+    applyTheme(theme);
+    themeDropdown.classList.remove('show');
+  });
+});
+
+// === Initialization ===
+function init() {
+  // 역할 확인 및 UI 업데이트
+  const userRole = localStorage.getItem('userRole');
+  checkAdminRole(userRole);
+  updateGreeting();
+  
+  // 테마 초기화
+  loadTheme();
+  
+  // 초기 화면 로드 및 상태 확인
+  toView('home');
+  health();
+  setInterval(health, 5000); // 5초마다 상태 확인
+
+  // 최근 대화 목록 로드 (예시: localStorage 사용 - 실제 구현 시 백엔드 연동 고려)
+  // state.recents = JSON.parse(localStorage.getItem('chatRecents') || '[]');
+  renderRecents();
+}
+
+init(); // 앱 시작
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+  </script>
+</body>
+</html>
